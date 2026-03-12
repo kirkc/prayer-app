@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createServerSupabaseClient } from '@/lib/supabase'
+import { createServerSupabaseClient } from '@/lib/supabase-server'
 import PrayerList from '@/components/PrayerList'
 import SignOutButton from '@/components/SignOutButton'
 import { PrayerRequest } from '@/types'
