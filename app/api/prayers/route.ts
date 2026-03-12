@@ -1,32 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServiceClient } from '@/lib/supabase'
+import { createServerSupabaseClient } from '@/lib/supabase'
 
-// GET /api/prayers - list approved prayer requests
-export async function GET() {
-  const supabase = createServiceClient()
+// GET /api/prayers?status=active|archived|spam
+export async function GET(req: NextRequest) {
+  const supabase = await createServerSupabaseClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const status = req.nextUrl.searchParams.get('status') ?? 'active'
   const { data, error } = await supabase
     .from('prayer_requests')
     .select('*')
-    .eq('is_approved', true)
+    .eq('status', status)
     .order('created_at', { ascending: false })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data)
 }
 
-// POST /api/prayers - submit a new prayer request
+// POST /api/prayers — public web form submission
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { name, phone, request, is_anonymous } = body
+  const { name, request } = body
 
-  if (!request) {
+  if (!request?.trim()) {
     return NextResponse.json({ error: 'Prayer request is required' }, { status: 400 })
   }
 
-  const supabase = createServiceClient()
+  const supabase = await createServerSupabaseClient()
   const { data, error } = await supabase
     .from('prayer_requests')
-    .insert({ name, phone, request, is_anonymous: is_anonymous ?? false })
+    .insert({ name: name?.trim() || null, request: request.trim(), source: 'web' })
     .select()
     .single()
 

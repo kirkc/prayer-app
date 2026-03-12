@@ -3,7 +3,7 @@ export type PrayerRequest = {
   name: string | null
   phone: string | null
   request: string
-  is_anonymous: boolean
-  is_approved: boolean
+  source: 'web' | 'sms'
+  status: 'active' | 'archived' | 'spam'
   created_at: string
 }

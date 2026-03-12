@@ -1,34 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { twilioClient, TWILIO_PHONE_NUMBER } from '@/lib/twilio'
+import twilio from 'twilio'
 
-// POST /api/sms - Twilio webhook for incoming SMS
+// POST /api/sms — Twilio webhook for incoming SMS
 export async function POST(req: NextRequest) {
+  // Validate the request is genuinely from Twilio
+  const signature = req.headers.get('x-twilio-signature') ?? ''
+  const url = process.env.TWILIO_WEBHOOK_URL ?? `https://${req.headers.get('host')}/api/sms`
   const formData = await req.formData()
-  const from = formData.get('From') as string
-  const body = formData.get('Body') as string
+  const params: Record<string, string> = {}
+  formData.forEach((value, key) => { params[key] = value.toString() })
 
-  if (!body || !from) {
-    return new NextResponse('Missing fields', { status: 400 })
+  const isValid = twilio.validateRequest(
+    process.env.TWILIO_AUTH_TOKEN!,
+    signature,
+    url,
+    params
+  )
+
+  if (!isValid && process.env.NODE_ENV === 'production') {
+    return new NextResponse('Forbidden', { status: 403 })
+  }
+
+  const from = params['From']
+  const body = params['Body']
+
+  if (!body?.trim() || !from) {
+    return new NextResponse('<Response></Response>', {
+      headers: { 'Content-Type': 'text/xml' },
+    })
   }
 
   const supabase = createServiceClient()
   const { error } = await supabase
     .from('prayer_requests')
-    .insert({ phone: from, request: body.trim(), is_anonymous: false })
+    .insert({ phone: from, request: body.trim(), source: 'sms' })
 
-  if (error) {
-    console.error('Supabase insert error:', error)
-  }
+  if (error) console.error('Supabase insert error:', error)
 
-  // Reply to sender via SMS
   await twilioClient.messages.create({
-    body: 'Thank you for your prayer request. We will be praying for you!',
+    body: 'Thank you for your prayer request. We will be praying for you.',
     from: TWILIO_PHONE_NUMBER,
     to: from,
   })
 
-  // Return empty TwiML response
   return new NextResponse('<Response></Response>', {
     headers: { 'Content-Type': 'text/xml' },
   })
