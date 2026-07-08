@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import PrayerCard from './PrayerCard'
-import { PrayerRequest } from '@/types'
+import { PrayerRequestWithState } from '@/types'
 
-type Status = PrayerRequest['status']
+type Status = PrayerRequestWithState['status']
 
 const TABS: { label: string; value: Status }[] = [
   { label: 'Active', value: 'active' },
@@ -13,30 +13,38 @@ const TABS: { label: string; value: Status }[] = [
 ]
 
 type Props = {
-  initialPrayers: PrayerRequest[]
+  initialPrayers: PrayerRequestWithState[]
   initialStatus: Status
 }
 
 export default function PrayerList({ initialPrayers, initialStatus }: Props) {
   const [activeTab, setActiveTab] = useState<Status>(initialStatus)
-  const [prayers, setPrayers] = useState<PrayerRequest[]>(initialPrayers)
+  const [prayers, setPrayers] = useState<PrayerRequestWithState[]>(initialPrayers)
+  const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
 
-  async function fetchPrayers(status: Status) {
-    setLoading(true)
-    const res = await fetch(`/api/prayers?status=${status}`)
-    const data = await res.json()
-    setPrayers(data)
-    setLoading(false)
-  }
+  // Reload the feed whenever the tab or (debounced) search term changes.
+  useEffect(() => {
+    const controller = new AbortController()
+    const timer = setTimeout(async () => {
+      setLoading(true)
+      try {
+        const params = new URLSearchParams({ status: activeTab })
+        if (search.trim()) params.set('q', search.trim())
+        const res = await fetch(`/api/prayers?${params}`, { signal: controller.signal })
+        if (res.ok) setPrayers(await res.json())
+      } catch {
+        // Aborted or network error — ignore; a later keystroke will retry.
+      } finally {
+        setLoading(false)
+      }
+    }, 250)
 
-  function handleTabChange(status: Status) {
-    setActiveTab(status)
-    fetchPrayers(status)
-  }
+    return () => { clearTimeout(timer); controller.abort() }
+  }, [activeTab, search])
 
-  function handleUpdate(id: string, _status: Status) {
-    // Remove from current list since it moved to a different status
+  function handleStatusChange(id: string) {
+    // Moved to a different tab — drop it from the current view.
     setPrayers(prev => prev.filter(p => p.id !== id))
   }
 
@@ -44,38 +52,65 @@ export default function PrayerList({ initialPrayers, initialStatus }: Props) {
     setPrayers(prev => prev.filter(p => p.id !== id))
   }
 
+  function handleLocalChange(id: string, patch: Partial<PrayerRequestWithState>) {
+    setPrayers(prev => prev.map(p => (p.id === id ? { ...p, ...patch } : p)))
+  }
+
   return (
     <div>
-      {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-gray-100 rounded-xl p-1 w-fit">
-        {TABS.map(tab => (
-          <button
-            key={tab.value}
-            onClick={() => handleTabChange(tab.value)}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === tab.value
-                ? 'bg-white text-gray-800 shadow-sm'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="flex items-center justify-between gap-3 mb-8 flex-wrap">
+        {/* Tabs */}
+        <div className="flex gap-1 bg-mist-100 rounded-full p-1">
+          {TABS.map(tab => (
+            <button
+              key={tab.value}
+              onClick={() => setActiveTab(tab.value)}
+              className={`px-5 py-1.5 rounded-full text-sm transition-all duration-300 ${
+                activeTab === tab.value
+                  ? 'bg-white text-ink-700 shadow-sm'
+                  : 'text-ink-400 hover:text-ink-600'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Search */}
+        <input
+          type="search"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search…"
+          className="input flex-1 min-w-[10rem] max-w-55 rounded-full py-1.5"
+        />
       </div>
 
-      {/* List */}
       {loading ? (
-        <p className="text-sm text-gray-400">Loading…</p>
+        <p className="text-sm text-ink-300 py-10 text-center animate-breathe">
+          One moment…
+        </p>
       ) : prayers.length === 0 ? (
-        <p className="text-sm text-gray-400">No {activeTab} prayer requests.</p>
+        <div className="py-16 text-center animate-breathe">
+          <p className="font-display text-lg font-light text-ink-500">
+            {search.trim() ? 'Nothing matches your search' : 'All is quiet'}
+          </p>
+          <p className="text-sm text-ink-300 mt-1.5">
+            {search.trim()
+              ? 'Try a different word or clear the search.'
+              : `No ${activeTab} prayer requests right now.`}
+          </p>
+        </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          {prayers.map(prayer => (
+        <div className="flex flex-col gap-4">
+          {prayers.map((prayer, i) => (
             <PrayerCard
               key={prayer.id}
               prayer={prayer}
-              onUpdate={handleUpdate}
+              index={i}
+              onStatusChange={handleStatusChange}
               onDelete={handleDelete}
+              onLocalChange={handleLocalChange}
             />
           ))}
         </div>

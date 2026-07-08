@@ -1,26 +1,134 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* ---------------------------------------------------------------------------
+   Design system — "quiet spa" palette.
+   Cool, light, low-saturation. Sage is the single accent; mist is the page
+   canvas; ink is text. Everything else is white and air.
+--------------------------------------------------------------------------- */
+@theme {
+  /* Accent — muted sage/eucalyptus */
+  --color-sage-50:  #f3f7f5;
+  --color-sage-100: #e4ece9;
+  --color-sage-200: #cbdad4;
+  --color-sage-300: #a8c0b8;
+  --color-sage-400: #82a399;
+  --color-sage-500: #64887e;
+  --color-sage-600: #4f6f66;
+  --color-sage-700: #415a53;
+  --color-sage-800: #364a44;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  /* Canvas — cool mist */
+  --color-mist-50:  #f7fafa;
+  --color-mist-100: #eef3f3;
+  --color-mist-200: #e0e8e8;
+  --color-mist-300: #c9d6d6;
+
+  /* Text — soft ink (blue-gray, never pure black) */
+  --color-ink-300: #a3b1b5;
+  --color-ink-400: #81959b;
+  --color-ink-500: #64787f;
+  --color-ink-600: #4c5e66;
+  --color-ink-700: #39484f;
+  --color-ink-800: #2a363c;
+
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-display: var(--font-fraunces);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-mist-50);
+  color: var(--color-ink-700);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Serif display face for headings */
+.font-display {
+  font-family: var(--font-fraunces), Georgia, serif;
+}
+
+/* ---------------------------------------------------------------------------
+   Motion — gentle, unhurried. Cards drift up as they enter; interactive
+   elements ease rather than snap.
+--------------------------------------------------------------------------- */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes breathe {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.animate-rise {
+  animation: rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-breathe {
+  animation: breathe 0.8s ease both;
+}
+
+/* Soft card treatment used across the app */
+.card {
+  background: #ffffff;
+  border: 1px solid var(--color-mist-200);
+  border-radius: 1.5rem;
+  box-shadow:
+    0 1px 2px rgb(42 54 60 / 0.03),
+    0 8px 24px -12px rgb(42 54 60 / 0.06);
+  transition: box-shadow 0.4s ease, transform 0.4s ease;
+}
+
+.card:hover {
+  box-shadow:
+    0 1px 2px rgb(42 54 60 / 0.03),
+    0 12px 32px -12px rgb(42 54 60 / 0.10);
+}
+
+/* Pill buttons */
+.btn {
+  border-radius: 9999px;
+  transition: background-color 0.3s ease, color 0.3s ease,
+    opacity 0.3s ease, transform 0.2s ease;
+}
+
+.btn:active { transform: scale(0.98); }
+
+.btn-primary {
+  background: var(--color-sage-600);
+  color: #ffffff;
+}
+.btn-primary:hover { background: var(--color-sage-700); }
+
+.btn-soft {
+  background: var(--color-sage-100);
+  color: var(--color-sage-700);
+}
+.btn-soft:hover { background: var(--color-sage-200); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-ink-400);
+}
+.btn-ghost:hover { color: var(--color-ink-600); }
+
+/* Inputs */
+.input {
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid var(--color-mist-300);
+  border-radius: 1rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  color: var(--color-ink-700);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.input::placeholder { color: var(--color-ink-300); }
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-sage-400);
+  box-shadow: 0 0 0 4px rgb(130 163 153 / 0.12);
 }

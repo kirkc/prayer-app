@@ -3,14 +3,14 @@ import { createServerSupabaseClient } from '@/lib/supabase-server'
 
 type Params = { params: Promise<{ id: string }> }
 
-// PATCH /api/prayers/[id] — update status
+// PATCH /api/prayers/[id] — change status (archive / spam / restore).
 export async function PATCH(req: NextRequest, { params }: Params) {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  const { status } = await req.json()
+  const { status } = await req.json().catch(() => ({}))
 
   if (!['active', 'archived', 'spam'].includes(status)) {
     return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
@@ -21,22 +21,25 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .update({ status })
     .eq('id', id)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('Status update error:', error)
+    return NextResponse.json({ error: 'Could not update request.' }, { status: 500 })
+  }
   return NextResponse.json({ success: true })
 }
 
-// DELETE /api/prayers/[id]
+// DELETE /api/prayers/[id] — permanently remove a request.
 export async function DELETE(_req: NextRequest, { params }: Params) {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  const { error } = await supabase
-    .from('prayer_requests')
-    .delete()
-    .eq('id', id)
+  const { error } = await supabase.from('prayer_requests').delete().eq('id', id)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    console.error('Delete error:', error)
+    return NextResponse.json({ error: 'Could not delete request.' }, { status: 500 })
+  }
   return NextResponse.json({ success: true })
 }
