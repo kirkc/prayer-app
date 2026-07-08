@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminUser } from '@/lib/admin'
 import { createServiceClient } from '@/lib/supabase-server'
+import { getSiteUrl } from '@/lib/site-url'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -18,9 +19,9 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Member not found.' }, { status: 404 })
   }
 
-  // The link lands on /set-password; the origin must be allow-listed in
-  // Supabase (Authentication → URL Configuration).
-  const redirectTo = `${req.nextUrl.origin}/set-password`
+  // The link lands on the deployed app's /set-password, not the request origin.
+  // This URL must be allow-listed in Supabase (Authentication → URL Configuration).
+  const redirectTo = `${getSiteUrl(req)}/set-password`
 
   const { error } = await service.auth.resetPasswordForEmail(data.user.email, {
     redirectTo,

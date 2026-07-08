@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminUser } from '@/lib/admin'
 import { createServiceClient } from '@/lib/supabase-server'
+import { getSiteUrl } from '@/lib/site-url'
 
 // POST /api/admin/members — invite a new team member by email. Admin only.
 // Sends a Supabase invite email; the link lands on /set-password where the
@@ -18,10 +19,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'A valid email is required.' }, { status: 400 })
   }
 
-  // Send the invite from the same origin the admin is using, so local dev and
-  // production each land on their own /set-password page. The origin must be
-  // allow-listed in Supabase (Authentication → URL Configuration).
-  const redirectTo = `${req.nextUrl.origin}/set-password`
+  // Always send invites to the deployed app's /set-password, never the request
+  // origin (an admin on localhost was baking localhost into live links). This
+  // URL must be allow-listed in Supabase (Authentication → URL Configuration).
+  const redirectTo = `${getSiteUrl(req)}/set-password`
 
   const service = createServiceClient()
   const { data, error } = await service.auth.admin.inviteUserByEmail(email, {
