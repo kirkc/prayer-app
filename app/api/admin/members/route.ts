@@ -32,10 +32,18 @@ export async function POST(req: NextRequest) {
 
   if (error) {
     console.error('Invite error:', error)
+    // Surface the cause so admins aren't left guessing. The 429 here is
+    // Supabase's built-in email rate limit — a sign a custom SMTP provider
+    // is needed for real onboarding (Authentication → SMTP Settings).
+    const isRateLimit =
+      error.status === 429 || /rate limit/i.test(error.message)
     const message = error.message.includes('already been registered')
       ? 'That email already has an account.'
-      : 'Could not send the invite.'
-    return NextResponse.json({ error: message }, { status: 400 })
+      : isRateLimit
+        ? 'Email rate limit reached. Set up a custom SMTP provider in Supabase to send invites reliably.'
+        : 'Could not send the invite.'
+    const status = isRateLimit ? 429 : 400
+    return NextResponse.json({ error: message }, { status })
   }
 
   // The auth trigger has already created their profile row.
