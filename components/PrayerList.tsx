@@ -83,6 +83,9 @@ export default function PrayerList({ initialPrayers, initialStatus }: Props) {
           onChange={e => setSearch(e.target.value)}
           placeholder="Search…"
           className="input flex-1 min-w-[10rem] max-w-55 rounded-full py-1.5"
+          autoComplete="off"
+          data-1p-ignore
+          data-lpignore="true"
         />
       </div>
 
