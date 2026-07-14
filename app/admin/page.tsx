@@ -14,18 +14,14 @@ export default async function AdminPage() {
   const service = createServiceClient()
 
   const [
-    { count: totalRequests },
-    { count: activeRequests },
-    { count: repliedRequests },
-    { count: totalPrayers },
+    { data: statsData },
     { data: profiles },
     { data: authUsers },
     { data: responses },
   ] = await Promise.all([
-    supabase.from('prayer_requests').select('*', { count: 'exact', head: true }),
-    supabase.from('prayer_requests').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-    supabase.from('prayer_requests').select('*', { count: 'exact', head: true }).eq('replied', true),
-    supabase.from('prayers').select('*', { count: 'exact', head: true }),
+    // One cheap call returns every ministry number (all counts over small
+    // tables, computed server-side in a single round trip).
+    service.rpc('admin_dashboard_stats'),
     supabase.from('profiles').select('id, display_name, role, created_at').order('created_at'),
     service.auth.admin.listUsers(),
     supabase
@@ -45,11 +41,12 @@ export default async function AdminPage() {
     email: emailById.get(p.id) ?? '',
   }))
 
-  const stats = [
-    { label: 'Requests', value: totalRequests ?? 0 },
-    { label: 'Active', value: activeRequests ?? 0 },
-    { label: 'Replied', value: repliedRequests ?? 0 },
-    { label: 'Prayers', value: totalPrayers ?? 0 },
+  const s = (statsData ?? {}) as Record<string, number>
+  const fmt = (v: number | undefined) => (v ?? 0).toLocaleString('en-US')
+  const recentStats = [
+    { label: 'Requests', value: s.recent_requests ?? 0 },
+    { label: 'Prayers', value: s.recent_prayers ?? 0 },
+    { label: 'Replies', value: s.recent_replies ?? 0 },
   ]
 
   return (
@@ -68,14 +65,24 @@ export default async function AdminPage() {
           </Link>
         </div>
 
-        {/* Overview */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-10 animate-rise" style={{ animationDelay: '0.05s' }}>
-          {stats.map(s => (
-            <div key={s.label} className="card p-5 text-center">
-              <p className="font-display text-3xl font-light text-ink-800">{s.value}</p>
-              <p className="text-xs text-ink-400 mt-1">{s.label}</p>
-            </div>
-          ))}
+        {/* Overview — the last 30 days, with quiet lifetime + personal notes */}
+        <div className="mb-10 animate-rise" style={{ animationDelay: '0.05s' }}>
+          <p className="text-xs tracking-[0.15em] uppercase text-ink-300 mb-3">
+            The last 30 days
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            {recentStats.map(stat => (
+              <div key={stat.label} className="card p-5 text-center">
+                <p className="font-display text-3xl font-light text-ink-800">{fmt(stat.value)}</p>
+                <p className="text-xs text-ink-400 mt-1">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+          <p className="text-sm text-ink-400 mt-5 leading-relaxed">
+            To date: <span className="text-ink-600">{fmt(s.total_requests)}</span> prayer requests
+            · <span className="text-ink-600">{fmt(s.total_people)}</span> people prayed for
+            · <span className="text-ink-600">{fmt(s.total_replies)}</span> replies sent
+          </p>
         </div>
 
         {/* Team */}
