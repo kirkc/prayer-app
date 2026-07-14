@@ -8,6 +8,28 @@ import type { PrayerRequest } from '@/types'
 
 const STATUSES: PrayerRequest['status'][] = ['active', 'archived', 'spam']
 
+// The public form is also embedded in the kirkcastro.com case study, which
+// posts here cross-origin. Only POST is opened up; GET stays same-origin.
+const CORS_ORIGINS = new Set(['https://kirkcastro.com', 'https://www.kirkcastro.com'])
+
+function corsHeaders(req: NextRequest): Record<string, string> {
+  const origin = req.headers.get('origin') ?? ''
+  const allowed = CORS_ORIGINS.has(origin) || origin.startsWith('http://localhost:')
+  return allowed ? { 'Access-Control-Allow-Origin': origin, Vary: 'Origin' } : {}
+}
+
+export function OPTIONS(req: NextRequest) {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      ...corsHeaders(req),
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Max-Age': '86400',
+    },
+  })
+}
+
 // GET /api/prayers?status=active|archived|spam&q=searchterm
 export async function GET(req: NextRequest) {
   const supabase = await createServerSupabaseClient()
@@ -30,31 +52,32 @@ export async function GET(req: NextRequest) {
 
 // POST /api/prayers — public web-form submission (unauthenticated).
 export async function POST(req: NextRequest) {
+  const cors = corsHeaders(req)
+  const json = (data: unknown, status: number) =>
+    NextResponse.json(data, { status, headers: cors })
+
   if (!rateLimit(`web-form:${clientIp(req)}`, { limit: 5, windowMs: 60_000 })) {
-    return NextResponse.json(
-      { error: 'Too many requests. Please try again in a moment.' },
-      { status: 429 }
-    )
+    return json({ error: 'Too many requests. Please try again in a moment.' }, 429)
   }
 
   const body = await req.json().catch(() => null)
   if (!body) {
-    return NextResponse.json({ error: 'Invalid request.' }, { status: 400 })
+    return json({ error: 'Invalid request.' }, 400)
   }
 
   // Honeypot: real users never fill a hidden field. Pretend success for bots.
   if (typeof body.website === 'string' && body.website.trim() !== '') {
-    return NextResponse.json({ success: true }, { status: 201 })
+    return json({ success: true }, 201)
   }
 
   const request = typeof body.request === 'string' ? body.request.trim() : ''
   const name = typeof body.name === 'string' ? body.name.trim() : ''
 
   if (!request) {
-    return NextResponse.json({ error: 'Prayer request is required.' }, { status: 400 })
+    return json({ error: 'Prayer request is required.' }, 400)
   }
   if (request.length > 2000) {
-    return NextResponse.json({ error: 'Prayer request is too long.' }, { status: 400 })
+    return json({ error: 'Prayer request is too long.' }, 400)
   }
 
   // Optional: the requester can opt into "someone prayed for you" texts by
@@ -64,7 +87,7 @@ export async function POST(req: NextRequest) {
   if (body.notify_prayers === true && typeof body.phone === 'string' && body.phone.trim()) {
     phone = normalizePhone(body.phone)
     if (!phone) {
-      return NextResponse.json({ error: 'Please enter a valid US phone number.' }, { status: 400 })
+      return json({ error: 'Please enter a valid US phone number.' }, 400)
     }
   }
 
@@ -83,12 +106,12 @@ export async function POST(req: NextRequest) {
 
   if (error) {
     console.error('Web-form insert error:', error)
-    return NextResponse.json({ error: 'Could not save your request.' }, { status: 500 })
+    return json({ error: 'Could not save your request.' }, 500)
   }
 
   // Alert immediate-cadence team members after the response is sent, so the
   // submitter isn't kept waiting on email fan-out.
   after(() => notifyNewRequest({ name: name || null, request, source: 'web' }))
 
-  return NextResponse.json({ success: true }, { status: 201 })
+  return json({ success: true }, 201)
 }
