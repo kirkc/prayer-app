@@ -10,7 +10,9 @@ export const dynamic = 'force-dynamic'
 
 // Vercel Cron hits this daily (see vercel.json). A single daily run drives both
 // cadences: 'daily' users always, 'weekly' users only on the chosen weekday.
-const WEEKLY_SEND_DOW = 1 // Monday, in UTC
+// Saturday (getUTCDay() → 6). The daily cron fires at 15:00 UTC (~8am Pacific),
+// so weekly digests land Saturday morning — ready for the team before Sunday.
+const WEEKLY_SEND_DOW = 6
 
 const WINDOW_MS = { daily: 24 * 60 * 60 * 1000, weekly: 7 * 24 * 60 * 60 * 1000 }
 
