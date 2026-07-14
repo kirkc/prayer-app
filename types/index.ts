@@ -1,8 +1,13 @@
+export type NotifyFrequency = 'immediate' | 'daily' | 'weekly'
+
 export type Profile = {
   id: string
   display_name: string | null
   role: 'prayer' | 'admin'
   created_at: string
+  notify_new_requests: boolean
+  notify_frequency: NotifyFrequency
+  notify_last_sent_at: string | null
 }
 
 // Shape returned to the dashboard client. Note: `phone` is intentionally

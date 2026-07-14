@@ -28,6 +28,12 @@ export default async function DashboardPage() {
             </p>
           </div>
           <div className="flex items-center gap-5 text-sm">
+            <Link
+              href="/settings"
+              className="text-ink-400 hover:text-ink-600 transition-colors duration-300"
+            >
+              Settings
+            </Link>
             {profile?.role === 'admin' && (
               <Link
                 href="/admin"

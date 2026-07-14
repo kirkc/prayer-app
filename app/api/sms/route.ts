@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
 import { twilioClient, TWILIO_PHONE_NUMBER } from '@/lib/twilio'
+import { notifyNewRequest } from '@/lib/notifications'
 import twilio from 'twilio'
 
 // POST /api/sms — Twilio webhook for incoming SMS
@@ -72,6 +73,9 @@ export async function POST(req: NextRequest) {
       headers: { 'Content-Type': 'text/xml' },
     })
   }
+
+  // Alert immediate-cadence team members (never the requester's phone number).
+  after(() => notifyNewRequest({ name: null, request: body.trim(), source: 'sms' }))
 
   try {
     await twilioClient.messages.create({

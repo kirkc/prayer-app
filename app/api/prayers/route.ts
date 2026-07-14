@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { createServerSupabaseClient, createServiceClient } from '@/lib/supabase-server'
 import { getPrayerFeed } from '@/lib/prayers'
 import { rateLimit, clientIp } from '@/lib/rate-limit'
+import { notifyNewRequest } from '@/lib/notifications'
 import type { PrayerRequest } from '@/types'
 
 const STATUSES: PrayerRequest['status'][] = ['active', 'archived', 'spam']
@@ -66,6 +67,10 @@ export async function POST(req: NextRequest) {
     console.error('Web-form insert error:', error)
     return NextResponse.json({ error: 'Could not save your request.' }, { status: 500 })
   }
+
+  // Alert immediate-cadence team members after the response is sent, so the
+  // submitter isn't kept waiting on email fan-out.
+  after(() => notifyNewRequest({ name: name || null, request, source: 'web' }))
 
   return NextResponse.json({ success: true }, { status: 201 })
 }
