@@ -3,6 +3,7 @@ import { createServerSupabaseClient, createServiceClient } from '@/lib/supabase-
 import { getPrayerFeed } from '@/lib/prayers'
 import { rateLimit, clientIp } from '@/lib/rate-limit'
 import { notifyNewRequest } from '@/lib/notifications'
+import { normalizePhone } from '@/lib/phone'
 import type { PrayerRequest } from '@/types'
 
 const STATUSES: PrayerRequest['status'][] = ['active', 'archived', 'spam']
@@ -56,12 +57,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Prayer request is too long.' }, { status: 400 })
   }
 
+  // Optional: the requester can opt into "someone prayed for you" texts by
+  // giving a phone number and checking consent. Only store the number when both
+  // are present, and only if it's a valid US number we can actually text.
+  let phone: string | null = null
+  if (body.notify_prayers === true && typeof body.phone === 'string' && body.phone.trim()) {
+    phone = normalizePhone(body.phone)
+    if (!phone) {
+      return NextResponse.json({ error: 'Please enter a valid US phone number.' }, { status: 400 })
+    }
+  }
+
   // Use the service role: the public form has no session, and we don't return
   // the stored row to the browser, so nothing sensitive is exposed.
   const supabase = createServiceClient()
   const { error } = await supabase
     .from('prayer_requests')
-    .insert({ name: name || null, request, source: 'web' })
+    .insert({
+      name: name || null,
+      request,
+      source: 'web',
+      phone,
+      notify_prayers: phone !== null,
+    })
 
   if (error) {
     console.error('Web-form insert error:', error)

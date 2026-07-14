@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
 
   const { error } = await supabase
     .from('prayer_requests')
-    .insert({ phone: from, request: body.trim(), source: 'sms' })
+    .insert({ phone: from, request: body.trim(), source: 'sms', notify_prayers: true })
 
   // Only acknowledge if we actually saved the request — otherwise the sender
   // would be told "received" for something that was lost.
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
 
   try {
     await twilioClient.messages.create({
-      body: 'Redemption Church Seattle: Thank you for your prayer request. Our prayer team has received it and will be praying for you. Msg freq varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help.',
+      body: 'Redemption Church Seattle: Thank you for your prayer request. Our prayer team has received it and will be praying for you. We\'ll let you know when people pray. Msg freq varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help.',
       from: TWILIO_PHONE_NUMBER,
       to: from,
     })
