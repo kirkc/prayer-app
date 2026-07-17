@@ -1,8 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminUser } from '@/lib/admin'
 import { createServiceClient } from '@/lib/supabase-server'
+import { logError } from '@/lib/log'
 
 type Params = { params: Promise<{ id: string }> }
+
+// Super admin accounts are managed by migration only — they can't be
+// demoted, removed, or reset from the team UI.
+async function isSuperAdminTarget(id: string): Promise<boolean> {
+  const service = createServiceClient()
+  const { data } = await service.from('profiles').select('role').eq('id', id).single()
+  return data?.role === 'super_admin'
+}
 
 // PATCH /api/admin/members/[id] — change a team member's role. Admin only.
 export async function PATCH(req: NextRequest, { params }: Params) {
@@ -22,6 +31,12 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       { status: 400 }
     )
   }
+  if (await isSuperAdminTarget(id)) {
+    return NextResponse.json(
+      { error: "This account can't be changed here." },
+      { status: 400 }
+    )
+  }
 
   // Role changes are done with the service role — authenticated users can
   // only update display_name (migration 003).
@@ -29,7 +44,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   const { error } = await service.from('profiles').update({ role }).eq('id', id)
 
   if (error) {
-    console.error('Role update error:', error)
+    await logError('admin.role_update', error, { target_id: id, role })
     return NextResponse.json({ error: 'Could not update role.' }, { status: 500 })
   }
   return NextResponse.json({ success: true })
@@ -50,12 +65,18 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
       { status: 400 }
     )
   }
+  if (await isSuperAdminTarget(id)) {
+    return NextResponse.json(
+      { error: "This account can't be removed here." },
+      { status: 400 }
+    )
+  }
 
   const service = createServiceClient()
   const { error } = await service.auth.admin.deleteUser(id)
 
   if (error) {
-    console.error('Member delete error:', error)
+    await logError('admin.member_delete', error, { target_id: id })
     return NextResponse.json({ error: 'Could not remove the member.' }, { status: 500 })
   }
   return NextResponse.json({ success: true })

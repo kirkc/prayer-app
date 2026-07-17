@@ -1,5 +1,6 @@
 import { Resend } from 'resend'
 import { getAppUrl } from '@/lib/site-url'
+import { logMessage } from '@/lib/log'
 
 // Transactional email via Resend. This is separate from the Supabase Auth
 // emails (invites / password resets) which go through Supabase's own SMTP
@@ -21,17 +22,47 @@ const FROM =
   process.env.NOTIFY_FROM_EMAIL ??
   'Redemption Church Seattle <prayer@redemptionseattle.org>'
 
+// Sends and records the attempt in message_log (kind identifies the email
+// type on the ops dashboard; the Resend id lets the Resend webhook update the
+// row with delivered/bounced later). Still throws on failure — callers keep
+// their own error semantics.
 export async function sendEmail({
   to,
   subject,
   html,
+  kind = 'email.other',
+  meta,
 }: {
   to: string
   subject: string
   html: string
+  kind?: string
+  meta?: Record<string, unknown>
 }): Promise<void> {
-  const { error } = await getClient().emails.send({ from: FROM, to, subject, html })
-  if (error) throw new Error(`Resend send failed: ${error.message}`)
+  try {
+    const { data, error } = await getClient().emails.send({ from: FROM, to, subject, html })
+    if (error) throw new Error(`Resend send failed: ${error.message}`)
+    await logMessage({
+      channel: 'email',
+      kind,
+      recipient: to,
+      subject,
+      status: 'sent',
+      providerId: data?.id ?? null,
+      meta,
+    })
+  } catch (err) {
+    await logMessage({
+      channel: 'email',
+      kind,
+      recipient: to,
+      subject,
+      status: 'failed',
+      errorMessage: err instanceof Error ? err.message : String(err),
+      meta,
+    })
+    throw err
+  }
 }
 
 // ---------------------------------------------------------------------------

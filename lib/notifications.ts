@@ -1,6 +1,7 @@
 import { createServiceClient } from '@/lib/supabase-server'
 import { sendEmail, renderEmail } from '@/lib/email'
 import { getAppUrl } from '@/lib/site-url'
+import { logError } from '@/lib/log'
 import type { NotifyFrequency } from '@/types'
 
 // The non-sensitive slice of a prayer request we're willing to put in an email.
@@ -56,7 +57,9 @@ export async function getEligibleRecipients(
     .eq('notify_new_requests', true)
     .eq('notify_frequency', frequency)
   if (error) {
-    console.error('getEligibleRecipients profiles error:', error)
+    // Returning [] here means zero notifications this run — worth a record,
+    // since it otherwise looks identical to "nobody subscribed".
+    await logError('notify.recipients_query', error, { frequency })
     return []
   }
   if (!profiles || profiles.length === 0) return []
@@ -90,9 +93,15 @@ export async function notifyNewRequest(summary: NewRequestSummary): Promise<void
   await Promise.all(
     recipients.map(async r => {
       try {
-        await sendEmail({ to: r.email, subject: 'New prayer request', html })
+        await sendEmail({
+          to: r.email,
+          subject: 'New prayer request',
+          html,
+          kind: 'email.new_request',
+          meta: { profile_id: r.id },
+        })
       } catch (err) {
-        console.error(`Notify ${r.email} failed:`, err)
+        await logError('notify.immediate', err, { recipient: r.email })
       }
     })
   )
@@ -117,5 +126,7 @@ export async function sendDigestEmail(
     to: recipient.email,
     subject: `Prayer requests — ${opts.period} summary`,
     html,
+    kind: 'email.digest',
+    meta: { profile_id: recipient.id, period: opts.period, count },
   })
 }

@@ -4,6 +4,7 @@ import { getPrayerFeed } from '@/lib/prayers'
 import { rateLimit, clientIp } from '@/lib/rate-limit'
 import { notifyNewRequest } from '@/lib/notifications'
 import { normalizePhone } from '@/lib/phone'
+import { logError } from '@/lib/log'
 import type { PrayerRequest } from '@/types'
 
 const STATUSES: PrayerRequest['status'][] = ['active', 'archived', 'spam']
@@ -105,7 +106,7 @@ export async function POST(req: NextRequest) {
     })
 
   if (error) {
-    console.error('Web-form insert error:', error)
+    await logError('prayers.web_insert', error)
     return json({ error: 'Could not save your request.' }, 500)
   }
 

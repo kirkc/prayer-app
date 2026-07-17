@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient, createServiceClient } from '@/lib/supabase-server'
-import { twilioClient, TWILIO_PHONE_NUMBER } from '@/lib/twilio'
+import { sendSms } from '@/lib/twilio'
+import { logError } from '@/lib/log'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -45,14 +46,15 @@ export async function POST(req: NextRequest, { params }: Params) {
   // 3. Send the outbound SMS.
   let twilioSid: string | null = null
   try {
-    const sent = await twilioClient.messages.create({
+    const sent = await sendSms({
       body: message,
-      from: TWILIO_PHONE_NUMBER,
       to: request.phone,
+      kind: 'sms.reply',
+      meta: { request_id: id, profile_id: user.id },
     })
     twilioSid = sent.sid
   } catch (err) {
-    console.error('Twilio send error:', err)
+    await logError('respond.sms_send', err, { request_id: id, profile_id: user.id })
     return NextResponse.json({ error: 'Could not send the text message.' }, { status: 502 })
   }
 
@@ -73,8 +75,18 @@ export async function POST(req: NextRequest, { params }: Params) {
     service.from('prayer_requests').update({ replied: true }).eq('id', id),
   ])
 
-  if (responseError) console.error('Response insert error:', responseError)
-  if (statusError) console.error('Replied-status update error:', statusError)
+  // The SMS went out but our record of it failed — the ops log is the only
+  // place this becomes visible.
+  if (responseError) {
+    await logError('respond.record_write', responseError, {
+      request_id: id,
+      profile_id: user.id,
+      twilio_message_sid: twilioSid,
+    })
+  }
+  if (statusError) {
+    await logError('respond.replied_update', statusError, { request_id: id })
+  }
 
   const { data: updated } = await service
     .from('prayer_requests')

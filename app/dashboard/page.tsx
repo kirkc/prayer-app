@@ -34,7 +34,7 @@ export default async function DashboardPage() {
             >
               Settings
             </Link>
-            {profile?.role === 'admin' && (
+            {(profile?.role === 'admin' || profile?.role === 'super_admin') && (
               <Link
                 href="/admin"
                 className="text-ink-400 hover:text-ink-600 transition-colors duration-300"

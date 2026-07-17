@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { logError } from '@/lib/log'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -32,7 +33,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
     )
 
   if (error) {
-    console.error('Pray insert error:', error)
+    await logError('prayers.pray_insert', error, { request_id: id })
     return NextResponse.json({ error: 'Could not record prayer.' }, { status: 500 })
   }
 
@@ -54,7 +55,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
     .eq('profile_id', user.id)
 
   if (error) {
-    console.error('Unpray error:', error)
+    await logError('prayers.pray_delete', error, { request_id: id })
     return NextResponse.json({ error: 'Could not update prayer.' }, { status: 500 })
   }
 

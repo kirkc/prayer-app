@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { logError } from '@/lib/log'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -22,7 +23,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     .eq('id', id)
 
   if (error) {
-    console.error('Status update error:', error)
+    await logError('prayers.status_update', error, { request_id: id, status })
     return NextResponse.json({ error: 'Could not update request.' }, { status: 500 })
   }
   return NextResponse.json({ success: true })
@@ -38,7 +39,7 @@ export async function DELETE(_req: NextRequest, { params }: Params) {
   const { error } = await supabase.from('prayer_requests').delete().eq('id', id)
 
   if (error) {
-    console.error('Delete error:', error)
+    await logError('prayers.delete', error, { request_id: id })
     return NextResponse.json({ error: 'Could not delete request.' }, { status: 500 })
   }
   return NextResponse.json({ success: true })

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import { sendEmail, renderEmail } from '@/lib/email'
 import { getAppUrl } from '@/lib/site-url'
+import { logError } from '@/lib/log'
 
 // POST /api/settings/test — send a sample notification to the signed-in member
 // so they can confirm delivery lands in their inbox.
@@ -21,9 +22,15 @@ export async function POST() {
   })
 
   try {
-    await sendEmail({ to: user.email, subject: 'Test notification', html })
+    await sendEmail({
+      to: user.email,
+      subject: 'Test notification',
+      html,
+      kind: 'email.test',
+      meta: { profile_id: user.id },
+    })
   } catch (err) {
-    console.error('Test email error:', err)
+    await logError('settings.test_email', err, { recipient: user.email })
     return NextResponse.json({ error: 'Could not send the test email.' }, { status: 500 })
   }
   return NextResponse.json({ success: true })

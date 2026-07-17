@@ -3,7 +3,7 @@ export type NotifyFrequency = 'immediate' | 'daily' | 'weekly'
 export type Profile = {
   id: string
   display_name: string | null
-  role: 'prayer' | 'admin'
+  role: 'prayer' | 'admin' | 'super_admin'
   created_at: string
   notify_new_requests: boolean
   notify_frequency: NotifyFrequency
@@ -36,4 +36,54 @@ export type PrayerResponse = {
   sent_at: string
   twilio_message_sid: string | null
   status: string | null
+}
+
+// --- Operations tables (service-role only; surfaced at /admin/ops) ---
+
+export type AppError = {
+  id: string
+  created_at: string
+  scope: string
+  message: string
+  detail: Record<string, unknown> | null
+  resolved_at: string | null
+  resolved_by: string | null
+}
+
+export type MessageStatus =
+  | 'sent'
+  | 'delivered'
+  | 'failed'
+  | 'undelivered'
+  | 'bounced'
+  | 'complained'
+  | 'delayed'
+
+export type MessageLogEntry = {
+  id: string
+  created_at: string
+  channel: 'sms' | 'email'
+  kind: string
+  recipient: string
+  subject: string | null
+  body_preview: string | null
+  status: MessageStatus
+  provider_id: string | null
+  error_code: string | null
+  error_message: string | null
+  status_updated_at: string | null
+  meta: Record<string, unknown> | null
+}
+
+export type CronJobName = 'notifications' | 'prayer-updates'
+
+export type CronRun = {
+  id: string
+  job: CronJobName
+  trigger: 'cron' | 'manual'
+  started_at: string
+  finished_at: string | null
+  ok: boolean | null
+  summary: Record<string, unknown> | null
+  triggered_by: string | null
 }

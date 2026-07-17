@@ -22,7 +22,10 @@ export default async function AdminPage() {
     // One cheap call returns every ministry number (all counts over small
     // tables, computed server-side in a single round trip).
     service.rpc('admin_dashboard_stats'),
-    supabase.from('profiles').select('id, display_name, role, created_at').order('created_at'),
+    supabase
+      .from('profiles')
+      .select('id, display_name, role, created_at, notify_new_requests, notify_frequency')
+      .order('created_at'),
     service.auth.admin.listUsers(),
     supabase
       .from('prayer_responses')
@@ -39,7 +42,12 @@ export default async function AdminPage() {
     display_name: p.display_name,
     role: p.role,
     email: emailById.get(p.id) ?? '',
+    notify_new_requests: p.notify_new_requests,
+    notify_frequency: p.notify_frequency,
   }))
+
+  const isSuperAdmin =
+    (profiles ?? []).find(p => p.id === admin.id)?.role === 'super_admin'
 
   const s = (statsData ?? {}) as Record<string, number>
   const fmt = (v: number | undefined) => (v ?? 0).toLocaleString('en-US')
@@ -57,12 +65,22 @@ export default async function AdminPage() {
             <h1 className="font-display text-3xl font-light text-ink-800">Admin</h1>
             <p className="text-sm text-ink-400 mt-1.5">A quiet look at the whole picture</p>
           </div>
-          <Link
-            href="/dashboard"
-            className="text-sm text-ink-400 hover:text-ink-600 transition-colors duration-300"
-          >
-            Back to requests
-          </Link>
+          <div className="flex items-center gap-5 text-sm">
+            {isSuperAdmin && (
+              <Link
+                href="/admin/ops"
+                className="text-ink-400 hover:text-ink-600 transition-colors duration-300"
+              >
+                Operations
+              </Link>
+            )}
+            <Link
+              href="/dashboard"
+              className="text-ink-400 hover:text-ink-600 transition-colors duration-300"
+            >
+              Back to requests
+            </Link>
+          </div>
         </div>
 
         {/* Overview — the last 30 days, with quiet lifetime + personal notes */}
@@ -88,7 +106,7 @@ export default async function AdminPage() {
         {/* Team */}
         <section className="mb-10 animate-rise" style={{ animationDelay: '0.1s' }}>
           <h2 className="font-display text-xl font-light text-ink-800 mb-4">Prayer team</h2>
-          <TeamList members={members} currentUserId={admin.id} />
+          <TeamList members={members} currentUserId={admin.id} superAdmin={isSuperAdmin} />
           <p className="text-xs text-ink-300 mt-3 leading-relaxed">
             Invited members receive an email link to choose their password.
             New members start with the Team role.

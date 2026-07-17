@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAdminUser } from '@/lib/admin'
 import { createServiceClient } from '@/lib/supabase-server'
 import { getSiteUrl } from '@/lib/site-url'
+import { logError, logMessage } from '@/lib/log'
 
 // POST /api/admin/members — invite a new team member by email. Admin only.
 // Sends a Supabase invite email; the link lands on /set-password where the
@@ -30,8 +31,21 @@ export async function POST(req: NextRequest) {
     data: displayName ? { display_name: displayName } : undefined,
   })
 
+  // The invite email goes out through Supabase Auth SMTP (Resend under the
+  // hood), so the app only sees the API call result here; the Resend webhook
+  // fills in delivery status later by matching the recipient.
+  await logMessage({
+    channel: 'email',
+    kind: 'auth.invite',
+    recipient: email,
+    subject: 'Team invite',
+    status: error ? 'failed' : 'sent',
+    errorMessage: error?.message,
+    meta: { invited_by: admin.id },
+  })
+
   if (error) {
-    console.error('Invite error:', error)
+    await logError('admin.invite', error, { recipient: email })
     // Surface the cause so admins aren't left guessing. The 429 here is
     // Supabase's built-in email rate limit — a sign a custom SMTP provider
     // is needed for real onboarding (Authentication → SMTP Settings).

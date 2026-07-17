@@ -16,6 +16,7 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "resend": "^6.17.2",
+    "svix": "^1.97.0",
     "twilio": "^5.13.0"
   },
   "devDependencies": {

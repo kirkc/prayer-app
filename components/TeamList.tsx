@@ -5,20 +5,37 @@ import { useState } from 'react'
 export type Member = {
   id: string
   display_name: string | null
-  role: 'prayer' | 'admin'
+  role: 'prayer' | 'admin' | 'super_admin'
   email: string
+  notify_new_requests?: boolean
+  notify_frequency?: 'immediate' | 'daily' | 'weekly'
 }
 
 type Props = {
   members: Member[]
   currentUserId: string
+  superAdmin?: boolean
 }
 
-export default function TeamList({ members: initial, currentUserId }: Props) {
+type EditDraft = {
+  display_name: string
+  notify_new_requests: boolean
+  notify_frequency: 'immediate' | 'daily' | 'weekly'
+}
+
+export default function TeamList({ members: initial, currentUserId, superAdmin = false }: Props) {
   const [members, setMembers] = useState(initial)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+
+  // Super-admin inline settings editor
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [draft, setDraft] = useState<EditDraft>({
+    display_name: '',
+    notify_new_requests: true,
+    notify_frequency: 'immediate',
+  })
 
   // Invite form
   const [inviting, setInviting] = useState(false)
@@ -77,6 +94,50 @@ export default function TeamList({ members: initial, currentUserId }: Props) {
     setBusyId(null)
   }
 
+  function startEdit(m: Member) {
+    setEditingId(m.id)
+    setDraft({
+      display_name: m.display_name ?? '',
+      notify_new_requests: m.notify_new_requests ?? true,
+      notify_frequency: m.notify_frequency ?? 'immediate',
+    })
+    setError('')
+  }
+
+  async function saveEdit(id: string) {
+    setBusyId(id)
+    setError('')
+    const res = await fetch(`/api/super/members/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        display_name: draft.display_name.trim() || null,
+        notify_new_requests: draft.notify_new_requests,
+        notify_frequency: draft.notify_frequency,
+      }),
+    })
+    if (res.ok) {
+      setMembers(prev =>
+        prev.map(m =>
+          m.id === id
+            ? {
+                ...m,
+                display_name: draft.display_name.trim() || null,
+                notify_new_requests: draft.notify_new_requests,
+                notify_frequency: draft.notify_frequency,
+              }
+            : m
+        )
+      )
+      setEditingId(null)
+      flash('Settings saved.')
+    } else {
+      const data = await res.json().catch(() => ({}))
+      setError(data.error ?? 'Could not save the settings.')
+    }
+    setBusyId(null)
+  }
+
   async function sendInvite(e: React.FormEvent) {
     e.preventDefault()
     setSendingInvite(true)
@@ -128,8 +189,10 @@ export default function TeamList({ members: initial, currentUserId }: Props) {
                   )}
                 </div>
 
-                {isSelf ? (
-                  <span className="text-xs text-ink-400 shrink-0 capitalize">{m.role}</span>
+                {isSelf || m.role === 'super_admin' ? (
+                  <span className="text-xs text-ink-400 shrink-0">
+                    {m.role === 'super_admin' ? 'Super admin' : m.role === 'admin' ? 'Admin' : 'Prayer'}
+                  </span>
                 ) : (
                   <div className="flex gap-1 bg-mist-100 rounded-full p-0.5 shrink-0">
                     {(['prayer', 'admin'] as const).map(role => (
@@ -150,8 +213,17 @@ export default function TeamList({ members: initial, currentUserId }: Props) {
                 )}
               </div>
 
-              {!isSelf && (
+              {!isSelf && m.role !== 'super_admin' && editingId !== m.id && (
                 <div className="flex items-center gap-4 mt-2 text-xs text-ink-300">
+                  {superAdmin && (
+                    <button
+                      onClick={() => startEdit(m)}
+                      disabled={busyId === m.id}
+                      className="hover:text-ink-500 transition-colors duration-300 disabled:opacity-50"
+                    >
+                      Edit settings
+                    </button>
+                  )}
                   <button
                     onClick={() => sendReset(m.id, label)}
                     disabled={busyId === m.id}
@@ -166,6 +238,64 @@ export default function TeamList({ members: initial, currentUserId }: Props) {
                   >
                     Remove
                   </button>
+                </div>
+              )}
+
+              {editingId === m.id && (
+                <div className="mt-3 flex flex-col gap-3 animate-breathe">
+                  <input
+                    type="text"
+                    value={draft.display_name}
+                    onChange={e => setDraft(d => ({ ...d, display_name: e.target.value }))}
+                    placeholder="Display name"
+                    className="input text-sm"
+                  />
+                  <div className="flex flex-wrap items-center gap-4 text-xs">
+                    <label className="flex items-center gap-2 text-ink-500 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={draft.notify_new_requests}
+                        onChange={e =>
+                          setDraft(d => ({ ...d, notify_new_requests: e.target.checked }))
+                        }
+                        className="accent-sage-600"
+                      />
+                      Email notifications
+                    </label>
+                    <div className="flex gap-1 bg-mist-100 rounded-full p-0.5">
+                      {(['immediate', 'daily', 'weekly'] as const).map(f => (
+                        <button
+                          key={f}
+                          type="button"
+                          onClick={() => setDraft(d => ({ ...d, notify_frequency: f }))}
+                          disabled={!draft.notify_new_requests}
+                          className={`px-3 py-1 rounded-full transition-all duration-300 disabled:opacity-40 ${
+                            draft.notify_frequency === f
+                              ? 'bg-white text-ink-700 shadow-sm'
+                              : 'text-ink-400 hover:text-ink-600'
+                          }`}
+                        >
+                          {f === 'immediate' ? 'Right away' : f === 'daily' ? 'Daily' : 'Weekly'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => saveEdit(m.id)}
+                      disabled={busyId === m.id}
+                      className="btn btn-primary text-xs px-4 py-1.5 font-medium disabled:opacity-50"
+                    >
+                      {busyId === m.id ? 'Saving…' : 'Save'}
+                    </button>
+                    <button
+                      onClick={() => { setEditingId(null); setError('') }}
+                      disabled={busyId === m.id}
+                      className="btn btn-ghost text-xs px-2"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

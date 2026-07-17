@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { logError } from '@/lib/log'
 import type { NotifyFrequency } from '@/types'
 
 const FREQUENCIES: NotifyFrequency[] = ['immediate', 'daily', 'weekly']
@@ -33,7 +34,7 @@ export async function PATCH(req: NextRequest) {
 
   const { error } = await supabase.from('profiles').update(update).eq('id', user.id)
   if (error) {
-    console.error('Settings update error:', error)
+    await logError('settings.update', error, { profile_id: user.id })
     return NextResponse.json({ error: 'Could not save your settings.' }, { status: 500 })
   }
   return NextResponse.json({ success: true })

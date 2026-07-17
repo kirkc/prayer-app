@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
-import { twilioClient, TWILIO_PHONE_NUMBER } from '@/lib/twilio'
+import { sendSms } from '@/lib/twilio'
 import { notifyNewRequest } from '@/lib/notifications'
+import { logError } from '@/lib/log'
 import twilio from 'twilio'
 
 // POST /api/sms — Twilio webhook for incoming SMS
@@ -44,16 +45,16 @@ export async function POST(req: NextRequest) {
       .delete()
       .eq('phone', from)
 
-    if (deleteError) console.error('Remove-data delete error:', deleteError)
+    if (deleteError) await logError('sms.remove_delete', deleteError, { from })
 
     try {
-      await twilioClient.messages.create({
+      await sendSms({
         body: "Redemption Church Seattle: We've deleted your prayer request data from our records. Text us again anytime to share a new request.",
-        from: TWILIO_PHONE_NUMBER,
         to: from,
+        kind: 'sms.remove_confirm',
       })
     } catch (err) {
-      console.error('Twilio remove-confirmation error:', err)
+      await logError('sms.remove_confirm', err, { from })
     }
 
     return new NextResponse('<Response></Response>', {
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
   // Only acknowledge if we actually saved the request — otherwise the sender
   // would be told "received" for something that was lost.
   if (error) {
-    console.error('Supabase insert error:', error)
+    await logError('sms.ingest_insert', error, { from })
     return new NextResponse('<Response></Response>', {
       headers: { 'Content-Type': 'text/xml' },
     })
@@ -78,13 +79,13 @@ export async function POST(req: NextRequest) {
   after(() => notifyNewRequest({ name: null, request: body.trim(), source: 'sms' }))
 
   try {
-    await twilioClient.messages.create({
+    await sendSms({
       body: 'Redemption Church Seattle: Thank you for your prayer request. Our prayer team has received it and will be praying for you. We\'ll let you know when people pray. Msg freq varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help.',
-      from: TWILIO_PHONE_NUMBER,
       to: from,
+      kind: 'sms.ack',
     })
   } catch (err) {
-    console.error('Twilio acknowledgment error:', err)
+    await logError('sms.ack', err, { from })
   }
 
   return new NextResponse('<Response></Response>', {

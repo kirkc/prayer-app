@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAdminUser } from '@/lib/admin'
 import { createServiceClient } from '@/lib/supabase-server'
 import { getSiteUrl } from '@/lib/site-url'
+import { logError, logMessage } from '@/lib/log'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -27,8 +28,20 @@ export async function POST(req: NextRequest, { params }: Params) {
     redirectTo,
   })
 
+  // Sent via Supabase Auth SMTP — the Resend webhook attaches delivery status
+  // later by matching the recipient.
+  await logMessage({
+    channel: 'email',
+    kind: 'auth.reset',
+    recipient: data.user.email,
+    subject: 'Password reset',
+    status: error ? 'failed' : 'sent',
+    errorMessage: error?.message,
+    meta: { requested_by: admin.id },
+  })
+
   if (error) {
-    console.error('Password reset error:', error)
+    await logError('admin.reset_password', error, { recipient: data.user.email })
     return NextResponse.json(
       { error: 'Could not send the reset email.' },
       { status: 500 }
