@@ -3,8 +3,10 @@ import type { PrayerRequest, PrayerRequestWithState } from '@/types'
 
 // The only columns ever sent to the browser. `phone` is deliberately excluded;
 // the database also enforces this via column-level grants (migration 002).
+// `has_phone` (migration 011) exposes only its presence so the UI knows a
+// text reply is possible.
 export const PRAYER_COLUMNS =
-  'id, name, request, source, status, replied, prayed_count, created_at'
+  'id, name, request, source, status, replied, prayed_count, created_at, has_phone'
 
 type Status = PrayerRequest['status']
 

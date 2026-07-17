@@ -29,25 +29,33 @@ export async function POST(req: NextRequest, { params }: Params) {
   const service = createServiceClient()
   const { data: request, error: fetchError } = await service
     .from('prayer_requests')
-    .select('id, phone, source')
+    .select('id, phone, source, replied, prayers_notified_at')
     .eq('id', id)
     .single()
 
   if (fetchError || !request) {
     return NextResponse.json({ error: 'Prayer request not found.' }, { status: 404 })
   }
-  if (request.source !== 'sms' || !request.phone) {
+  if (!request.phone) {
     return NextResponse.json(
       { error: 'This request has no phone number to reply to.' },
       { status: 400 }
     )
   }
 
+  // An SMS requester texted us first, so replies land in a thread they
+  // started. A web requester has never seen our number — if this is the
+  // first text we've ever sent them for this request (no reply yet, no
+  // prayer-update yet), identify who it's from.
+  const isFirstContact =
+    request.source === 'web' && !request.replied && request.prayers_notified_at == null
+  const smsBody = isFirstContact ? `Redemption Church Seattle: ${message}` : message
+
   // 3. Send the outbound SMS.
   let twilioSid: string | null = null
   try {
     const sent = await sendSms({
-      body: message,
+      body: smsBody,
       to: request.phone,
       kind: 'sms.reply',
       meta: { request_id: id, profile_id: user.id },

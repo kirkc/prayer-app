@@ -23,7 +23,9 @@ export default function PrayerCard({
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
-  const canReply = prayer.source === 'sms'
+  // Any request with a phone on file can be replied to by text — SMS requests
+  // always have one; web requests only when the requester opted in.
+  const canReply = prayer.has_phone
 
   async function togglePray() {
     setBusy(true)

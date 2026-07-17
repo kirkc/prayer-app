@@ -11,7 +11,8 @@ export type Profile = {
 }
 
 // Shape returned to the dashboard client. Note: `phone` is intentionally
-// absent — it is never sent to the browser (see migration 002 column grants).
+// absent — it is never sent to the browser (see migration 002 column grants);
+// `has_phone` exposes only whether a text reply is possible.
 export type PrayerRequest = {
   id: string
   name: string | null
@@ -21,6 +22,7 @@ export type PrayerRequest = {
   replied: boolean
   prayed_count: number
   created_at: string
+  has_phone: boolean
 }
 
 // A prayer request plus per-viewer state for the current signed-in user.

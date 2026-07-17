@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerSupabaseClient } from '@/lib/supabase-server'
 import NotificationSettings from '@/components/NotificationSettings'
+import AccountSettings from '@/components/AccountSettings'
 import type { NotifyFrequency } from '@/types'
 
 export const dynamic = 'force-dynamic'
@@ -36,9 +37,14 @@ export default async function SettingsPage() {
           </Link>
         </div>
 
-        <section className="animate-rise" style={{ animationDelay: '0.05s' }}>
+        <section className="mb-10 animate-rise" style={{ animationDelay: '0.05s' }}>
           <h2 className="font-display text-xl font-light text-ink-800 mb-4">Notifications</h2>
           <NotificationSettings initialEnabled={enabled} initialFrequency={frequency} />
+        </section>
+
+        <section className="animate-rise" style={{ animationDelay: '0.1s' }}>
+          <h2 className="font-display text-xl font-light text-ink-800 mb-4">Account</h2>
+          <AccountSettings email={user.email ?? ''} />
         </section>
       </div>
     </main>

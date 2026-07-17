@@ -24,12 +24,14 @@ export const twilioClient = {
 export const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER!
 
 // Where Twilio reports per-message delivery status (delivered / undelivered /
-// failed + error code). Handled by app/api/webhooks/twilio-status.
-function statusCallbackUrl(): string {
-  return (
+// failed + error code). Handled by app/api/webhooks/twilio-status. Twilio
+// rejects non-public URLs outright, so local dev (localhost fallback) sends
+// without a callback rather than failing every send.
+function statusCallbackUrl(): string | undefined {
+  const url =
     process.env.TWILIO_STATUS_CALLBACK_URL ??
     `${getAppUrl()}/api/webhooks/twilio-status`
-  )
+  return url.startsWith('https://') ? url : undefined
 }
 
 // Send an SMS and record it in message_log. Every outbound text goes through
