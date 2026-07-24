@@ -76,13 +76,22 @@ export function renderEmail({
   intro,
   bodyHtml,
   cta,
+  footer,
 }: {
   heading: string
   intro: string
   bodyHtml: string
   cta?: { label: string; url: string }
+  // Overrides the default "manage your notifications" footer. Auth emails
+  // (resets, sign-in links, invites) aren't notifications, so they pass a
+  // security-appropriate line instead. HTML is allowed.
+  footer?: string
 }): string {
   const settingsUrl = `${getAppUrl()}/settings`
+  const footerHtml =
+    footer ??
+    `You're receiving this because notifications are on for your prayer-team account.<br/>
+            <a href="${settingsUrl}" style="color:#64887e;">Manage your notifications</a>`
   const ctaHtml = cta
     ? `<tr><td style="padding: 8px 0 4px;">
          <a href="${cta.url}" style="display:inline-block;background:#4f6f66;color:#ffffff;text-decoration:none;font-size:14px;padding:10px 22px;border-radius:9999px;">${cta.label}</a>
@@ -115,8 +124,7 @@ export function renderEmail({
             </tr>
           </table>
           <p style="max-width:520px;margin:16px auto 0;font-size:12px;line-height:1.6;color:#a3b1b5;text-align:center;">
-            You're receiving this because notifications are on for your prayer-team account.<br/>
-            <a href="${settingsUrl}" style="color:#64887e;">Manage your notifications</a>
+            ${footerHtml}
           </p>
         </td>
       </tr>

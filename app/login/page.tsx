@@ -38,19 +38,22 @@ export default function LoginPage() {
     setError(null)
     setMagicLoading(true)
 
-    const supabase = createClient()
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: {
-        // Existing team members only — a link never provisions a new account.
-        shouldCreateUser: false,
-        emailRedirectTo: `${window.location.origin}/auth/confirm`,
-      },
+    // Sent server-side via Resend (existing team members only — a link never
+    // provisions a new account). The response is intentionally uniform so it
+    // can't reveal which emails have accounts, so we always show the sent state.
+    const res = await fetch('/api/auth/magic-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email.trim() }),
     })
 
     setMagicLoading(false)
-    if (error) setError(error.message)
-    else setMagicSent(true)
+    if (res.ok) {
+      setMagicSent(true)
+    } else {
+      const data = await res.json().catch(() => ({}))
+      setError(data.error ?? 'Could not send the sign-in link.')
+    }
   }
 
   return (

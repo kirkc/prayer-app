@@ -34,8 +34,18 @@ export default function SetPasswordPage() {
     })
 
     ;(async () => {
+      const params = new URLSearchParams(window.location.search)
+
+      // Links emailed via Resend carry ?token_hash=…&type=(recovery|invite);
+      // verify it to establish the session (see lib/auth-email.ts).
+      const tokenHash = params.get('token_hash')
+      const type = params.get('type')
+      if (tokenHash && (type === 'recovery' || type === 'invite')) {
+        try { await supabase.auth.verifyOtp({ token_hash: tokenHash, type }) } catch { /* fall through */ }
+      }
+
       // Some link formats arrive as ?code=… — exchange it explicitly.
-      const code = new URLSearchParams(window.location.search).get('code')
+      const code = params.get('code')
       if (code) {
         try { await supabase.auth.exchangeCodeForSession(code) } catch { /* fall through */ }
       }
