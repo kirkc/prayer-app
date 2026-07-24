@@ -32,7 +32,17 @@ export default function AuthConfirmPage() {
     })
 
     ;(async () => {
-      const code = new URLSearchParams(window.location.search).get('code')
+      const params = new URLSearchParams(window.location.search)
+
+      // Sign-in links emailed via Resend carry ?token_hash=…&type=magiclink;
+      // verify it to establish the session (see lib/auth-email.ts).
+      const tokenHash = params.get('token_hash')
+      const type = params.get('type')
+      if (tokenHash && type === 'magiclink') {
+        try { await supabase.auth.verifyOtp({ token_hash: tokenHash, type }) } catch { /* fall through */ }
+      }
+
+      const code = params.get('code')
       if (code) {
         try { await supabase.auth.exchangeCodeForSession(code) } catch { /* fall through */ }
       }

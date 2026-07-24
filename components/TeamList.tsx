@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import KebabMenu, { KebabItem } from './KebabMenu'
 
 export type Member = {
   id: string
@@ -36,6 +37,10 @@ export default function TeamList({ members: initial, currentUserId, superAdmin =
     notify_new_requests: true,
     notify_frequency: 'immediate',
   })
+
+  // Change-name inline editor (all admins)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [nameDraft, setNameDraft] = useState('')
 
   // Invite form
   const [inviting, setInviting] = useState(false)
@@ -95,6 +100,7 @@ export default function TeamList({ members: initial, currentUserId, superAdmin =
   }
 
   function startEdit(m: Member) {
+    setRenamingId(null)
     setEditingId(m.id)
     setDraft({
       display_name: m.display_name ?? '',
@@ -102,6 +108,33 @@ export default function TeamList({ members: initial, currentUserId, superAdmin =
       notify_frequency: m.notify_frequency ?? 'immediate',
     })
     setError('')
+  }
+
+  function startRename(m: Member) {
+    setEditingId(null)
+    setRenamingId(m.id)
+    setNameDraft(m.display_name ?? '')
+    setError('')
+  }
+
+  async function saveName(id: string) {
+    const display_name = nameDraft.trim() || null
+    setBusyId(id)
+    setError('')
+    const res = await fetch(`/api/admin/members/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ display_name }),
+    })
+    if (res.ok) {
+      setMembers(prev => prev.map(m => (m.id === id ? { ...m, display_name } : m)))
+      setRenamingId(null)
+      flash('Name updated.')
+    } else {
+      const data = await res.json().catch(() => ({}))
+      setError(data.error ?? 'Could not update the name.')
+    }
+    setBusyId(null)
   }
 
   async function saveEdit(id: string) {
@@ -189,55 +222,94 @@ export default function TeamList({ members: initial, currentUserId, superAdmin =
                   )}
                 </div>
 
-                {isSelf || m.role === 'super_admin' ? (
-                  <span className="text-xs text-ink-400 shrink-0">
-                    {m.role === 'super_admin' ? 'Super admin' : m.role === 'admin' ? 'Admin' : 'Prayer'}
-                  </span>
-                ) : (
-                  <div className="flex gap-1 bg-mist-100 rounded-full p-0.5 shrink-0">
-                    {(['prayer', 'admin'] as const).map(role => (
-                      <button
-                        key={role}
-                        onClick={() => m.role !== role && changeRole(m.id, role)}
-                        disabled={busyId === m.id}
-                        className={`px-3 py-1 rounded-full text-xs transition-all duration-300 disabled:opacity-50 ${
-                          m.role === role
-                            ? 'bg-white text-ink-700 shadow-sm'
-                            : 'text-ink-400 hover:text-ink-600'
-                        }`}
-                      >
-                        {role === 'prayer' ? 'Team' : 'Admin'}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <div className="flex items-center gap-2 shrink-0">
+                  {isSelf || m.role === 'super_admin' ? (
+                    <span className="text-xs text-ink-400">
+                      {m.role === 'super_admin' ? 'Super admin' : m.role === 'admin' ? 'Admin' : 'Prayer'}
+                    </span>
+                  ) : (
+                    <>
+                      <div className="flex gap-1 bg-mist-100 rounded-full p-0.5">
+                        {(['prayer', 'admin'] as const).map(role => (
+                          <button
+                            key={role}
+                            onClick={() => m.role !== role && changeRole(m.id, role)}
+                            disabled={busyId === m.id}
+                            className={`px-3 py-1 rounded-full text-xs transition-all duration-300 disabled:opacity-50 ${
+                              m.role === role
+                                ? 'bg-white text-ink-700 shadow-sm'
+                                : 'text-ink-400 hover:text-ink-600'
+                            }`}
+                          >
+                            {role === 'prayer' ? 'Team' : 'Admin'}
+                          </button>
+                        ))}
+                      </div>
+
+                      <KebabMenu disabled={busyId === m.id}>
+                        {close => (
+                          <>
+                            <KebabItem
+                              onClick={() => { close(); startRename(m) }}
+                              disabled={busyId === m.id}
+                            >
+                              Change name
+                            </KebabItem>
+                            {superAdmin && (
+                              <KebabItem
+                                onClick={() => { close(); startEdit(m) }}
+                                disabled={busyId === m.id}
+                              >
+                                Edit settings
+                              </KebabItem>
+                            )}
+                            <KebabItem
+                              onClick={() => { close(); sendReset(m.id, label) }}
+                              disabled={busyId === m.id}
+                            >
+                              Send password reset
+                            </KebabItem>
+                            <KebabItem
+                              danger
+                              onClick={() => { close(); removeMember(m.id, label) }}
+                              disabled={busyId === m.id}
+                            >
+                              Remove
+                            </KebabItem>
+                          </>
+                        )}
+                      </KebabMenu>
+                    </>
+                  )}
+                </div>
               </div>
 
-              {!isSelf && m.role !== 'super_admin' && editingId !== m.id && (
-                <div className="flex items-center gap-4 mt-2 text-xs text-ink-300">
-                  {superAdmin && (
+              {renamingId === m.id && (
+                <div className="mt-3 flex flex-col gap-3 animate-breathe">
+                  <input
+                    type="text"
+                    value={nameDraft}
+                    onChange={e => setNameDraft(e.target.value)}
+                    placeholder="Display name"
+                    className="input text-sm"
+                    autoFocus
+                  />
+                  <div className="flex items-center gap-3">
                     <button
-                      onClick={() => startEdit(m)}
+                      onClick={() => saveName(m.id)}
                       disabled={busyId === m.id}
-                      className="hover:text-ink-500 transition-colors duration-300 disabled:opacity-50"
+                      className="btn btn-primary text-xs px-4 py-1.5 font-medium disabled:opacity-50"
                     >
-                      Edit settings
+                      {busyId === m.id ? 'Saving…' : 'Save'}
                     </button>
-                  )}
-                  <button
-                    onClick={() => sendReset(m.id, label)}
-                    disabled={busyId === m.id}
-                    className="hover:text-ink-500 transition-colors duration-300 disabled:opacity-50"
-                  >
-                    Send password reset
-                  </button>
-                  <button
-                    onClick={() => removeMember(m.id, label)}
-                    disabled={busyId === m.id}
-                    className="hover:text-red-400 transition-colors duration-300 disabled:opacity-50"
-                  >
-                    Remove
-                  </button>
+                    <button
+                      onClick={() => { setRenamingId(null); setError('') }}
+                      disabled={busyId === m.id}
+                      className="btn btn-ghost text-xs px-2"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               )}
 
