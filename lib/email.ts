@@ -2,9 +2,9 @@ import { Resend } from 'resend'
 import { getAppUrl } from '@/lib/site-url'
 import { logMessage } from '@/lib/log'
 
-// Transactional email via Resend. This is separate from the Supabase Auth
-// emails (invites / password resets) which go through Supabase's own SMTP
-// settings — this client is for app-generated mail like prayer notifications.
+// Transactional email via Resend — app-generated mail like prayer
+// notifications, plus the account emails (invites / password resets / sign-in
+// links) that lib/auth-email.ts builds on top of sendEmail.
 //
 // Lazily constructed so importing this module never throws when the key is
 // absent (mirrors the twilio client pattern in lib/twilio.ts).
