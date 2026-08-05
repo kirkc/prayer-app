@@ -109,6 +109,10 @@ export async function runPrayerUpdatesJob(): Promise<CronSummary> {
   const service = createServiceClient()
   const runAt = new Date()
 
+  // The first update to a requester signs with their church's name — look the
+  // names up once for the whole run.
+  const orgNameById = new Map((await getAllOrgs(service)).map(o => [o.id, o.name]))
+
   const { data: requests, error } = await service
     .from('prayer_requests')
     .select('id, phone, created_at, prayers_notified_at, org_id')
@@ -153,9 +157,16 @@ export async function runPrayerUpdatesJob(): Promise<CronSummary> {
     // (compliance); every one after that stays bare so it reads like a friend
     // checking in. `prayers_notified_at == null` means we've never texted them.
     const isFirst = r.prayers_notified_at == null
-    const body = isFirst
-      ? `${core} —Redemption Church Seattle. Reply STOP to pause.`
-      : core
+    const orgName = orgNameById.get(r.org_id as string)
+    if (isFirst && !orgName) {
+      // A first-contact text must identify its sender — never send unsigned.
+      await logError('cron.prayer_updates.missing_org', new Error('No org for request'), {
+        request_id: r.id,
+      })
+      errors++
+      continue
+    }
+    const body = isFirst ? `${core} —${orgName}. Reply STOP to pause.` : core
 
     try {
       await sendSms({

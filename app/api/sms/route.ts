@@ -40,8 +40,15 @@ export async function POST(req: NextRequest) {
 
   // The number the requester texted identifies the church. An unknown To
   // means a number Twilio routes here that no org claims — record it and
-  // return 200 so Twilio doesn't retry, but save nothing.
-  const org = to ? await getOrgByTwilioPhone(supabase, to) : null
+  // return 200 so Twilio doesn't retry, but save nothing. A lookup FAILURE is
+  // different: return 500 so Twilio retries the delivery instead of the text
+  // being dropped over a transient database error.
+  let org
+  try {
+    org = to ? await getOrgByTwilioPhone(supabase, to) : null
+  } catch {
+    return new NextResponse('Lookup failed', { status: 500 })
+  }
   if (!org) {
     await logError('sms.unknown_number', new Error('No org for inbound number'), { to })
     return new NextResponse('<Response></Response>', {

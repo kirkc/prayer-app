@@ -79,6 +79,7 @@ export async function sendAuthEmail({
   email,
   redirectBase,
   data,
+  linkType,
   orgName,
   orgId,
   meta,
@@ -87,6 +88,12 @@ export async function sendAuthEmail({
   email: string
   redirectBase: string
   data?: Record<string, unknown>
+  // Overrides which auth link is generated while `type` keeps choosing the
+  // copy. The invite flow uses this: the user is pre-created with
+  // auth.admin.createUser (so the profile trigger can verify an app_metadata
+  // invite marker the public signup endpoint can't forge), and a recovery
+  // link — "choose your password" — is what a pre-created account needs.
+  linkType?: 'recovery'
   // Which church the email speaks for. Invites name it in the copy; orgId
   // tags the message_log row for the ops dashboard.
   orgName?: string
@@ -101,12 +108,16 @@ export async function sendAuthEmail({
   const service = createServiceClient()
   const redirectTo = `${redirectBase}${copy.landing}`
 
+  // The link type drives both generateLink and the ?type= the landing page
+  // passes to verifyOtp — they must match.
+  const effectiveLinkType = linkType ?? type
+
   // generateLink's params are a discriminated union on `type`, so narrow
   // explicitly rather than passing a computed type.
   const linkResult =
-    type === 'recovery'
+    effectiveLinkType === 'recovery'
       ? await service.auth.admin.generateLink({ type: 'recovery', email, options: { redirectTo } })
-      : type === 'magiclink'
+      : effectiveLinkType === 'magiclink'
         ? await service.auth.admin.generateLink({ type: 'magiclink', email, options: { redirectTo } })
         : await service.auth.admin.generateLink({ type: 'invite', email, options: { data, redirectTo } })
 
@@ -132,7 +143,7 @@ export async function sendAuthEmail({
     }
   }
 
-  const url = `${redirectBase}${copy.landing}?token_hash=${link.properties.hashed_token}&type=${type}`
+  const url = `${redirectBase}${copy.landing}?token_hash=${link.properties.hashed_token}&type=${effectiveLinkType}`
 
   // sendEmail logs the send (and any Resend failure) to message_log with the
   // Resend id, so the Resend webhook attaches delivery status later.

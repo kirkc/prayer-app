@@ -30,34 +30,54 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Could not send the invite.' }, { status: 500 })
   }
 
-  // Always send invites to the deployed app's /set-password, never the request
-  // origin (an admin on localhost was baking localhost into live links). This
-  // URL must be allow-listed in Supabase (Authentication → URL Configuration).
-  const { user, error } = await sendAuthEmail({
-    type: 'invite',
+  // Create the account first, with an app_metadata invite marker. Public
+  // signup can set user_metadata but never app_metadata, so the profile
+  // trigger can require this marker to enforce invite-only membership at the
+  // database — even if someone hits the auth signup endpoint directly with
+  // the anon key.
+  const { data: created, error: createError } = await service.auth.admin.createUser({
     email,
-    redirectBase: getSiteUrl(req),
-    data: {
+    email_confirm: true,
+    app_metadata: { invited: true },
+    user_metadata: {
       org_id: org.id,
       ...(displayName ? { display_name: displayName } : {}),
     },
+  })
+
+  if (createError || !created?.user) {
+    await logError('admin.invite', createError ?? new Error('No user returned'), { recipient: email })
+    const message = /already been registered|already registered/i.test(createError?.message ?? '')
+      ? 'That email already has an account.'
+      : 'Could not send the invite.'
+    return NextResponse.json({ error: message }, { status: 400 })
+  }
+  const user = created.user
+
+  // Always send invites to the deployed app's /set-password, never the request
+  // origin (an admin on localhost was baking localhost into live links). This
+  // URL must be allow-listed in Supabase (Authentication → URL Configuration).
+  // The account already exists, so the link is a recovery ("choose your
+  // password") link dressed in the invite copy.
+  const { error } = await sendAuthEmail({
+    type: 'invite',
+    linkType: 'recovery',
+    email,
+    redirectBase: getSiteUrl(req),
     orgName: org.name,
     orgId: org.id,
     meta: { invited_by: admin.user.id },
   })
 
-  if (error || !user) {
-    await logError('admin.invite', error ?? new Error('No user returned'), { recipient: email })
-    // Surface the cause so admins aren't left guessing. A 429 here would be a
-    // Resend rate limit; the message-already-registered case is common.
-    const isRateLimit = error?.status === 429 || /rate limit/i.test(error?.message ?? '')
-    const message = /already been registered|already registered/i.test(error?.message ?? '')
-      ? 'That email already has an account.'
-      : isRateLimit
-        ? 'Email rate limit reached — please wait a few minutes and try again.'
-        : 'Could not send the invite.'
-    const status = isRateLimit ? 429 : 400
-    return NextResponse.json({ error: message }, { status })
+  if (error) {
+    // Undo the account so the admin's retry doesn't hit "already registered".
+    await service.auth.admin.deleteUser(user.id)
+    await logError('admin.invite', error, { recipient: email })
+    const isRateLimit = error.status === 429 || /rate limit/i.test(error.message ?? '')
+    const message = isRateLimit
+      ? 'Email rate limit reached — please wait a few minutes and try again.'
+      : 'Could not send the invite.'
+    return NextResponse.json({ error: message }, { status: isRateLimit ? 429 : 400 })
   }
 
   // The auth trigger has already created their profile row.
