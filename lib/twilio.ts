@@ -42,6 +42,7 @@ export async function sendSms(opts: {
   to: string
   body: string
   kind: string
+  orgId?: string | null
   meta?: Record<string, unknown>
 }): Promise<{ sid: string }> {
   try {
@@ -58,6 +59,7 @@ export async function sendSms(opts: {
       bodyPreview: opts.body,
       status: 'sent',
       providerId: sent.sid,
+      orgId: opts.orgId,
       meta: opts.meta,
     })
     return { sid: sent.sid }
@@ -69,6 +71,7 @@ export async function sendSms(opts: {
       bodyPreview: opts.body,
       status: 'failed',
       errorMessage: err instanceof Error ? err.message : String(err),
+      orgId: opts.orgId,
       meta: opts.meta,
     })
     throw err

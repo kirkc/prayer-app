@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAdminUser } from '@/lib/admin'
+import { getAdminContext } from '@/lib/admin'
+import { createServiceClient } from '@/lib/supabase-server'
+import { getOrgById } from '@/lib/orgs'
 import { sendAuthEmail } from '@/lib/auth-email'
 import { getSiteUrl } from '@/lib/site-url'
 import { logError } from '@/lib/log'
@@ -8,7 +10,7 @@ import { logError } from '@/lib/log'
 // generateLink (type: 'invite') creates the user; the branded email is sent via
 // Resend and its link lands on /set-password where the member chooses a password.
 export async function POST(req: NextRequest) {
-  const admin = await getAdminUser()
+  const admin = await getAdminContext()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json().catch(() => ({}))
@@ -20,6 +22,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'A valid email is required.' }, { status: 400 })
   }
 
+  // The invitee joins the inviting admin's church: org_id in the invite
+  // metadata is what handle_new_user() reads when it creates their profile.
+  const service = createServiceClient()
+  const org = await getOrgById(service, admin.orgId)
+  if (!org) {
+    return NextResponse.json({ error: 'Could not send the invite.' }, { status: 500 })
+  }
+
   // Always send invites to the deployed app's /set-password, never the request
   // origin (an admin on localhost was baking localhost into live links). This
   // URL must be allow-listed in Supabase (Authentication → URL Configuration).
@@ -27,8 +37,13 @@ export async function POST(req: NextRequest) {
     type: 'invite',
     email,
     redirectBase: getSiteUrl(req),
-    data: displayName ? { display_name: displayName } : undefined,
-    meta: { invited_by: admin.id },
+    data: {
+      org_id: org.id,
+      ...(displayName ? { display_name: displayName } : {}),
+    },
+    orgName: org.name,
+    orgId: org.id,
+    meta: { invited_by: admin.user.id },
   })
 
   if (error || !user) {

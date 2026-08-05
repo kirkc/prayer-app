@@ -58,6 +58,7 @@ export type MessageLogInput = {
   status: Extract<MessageStatus, 'sent' | 'failed'>
   providerId?: string | null
   errorMessage?: string
+  orgId?: string | null
   meta?: Record<string, unknown>
 }
 
@@ -73,6 +74,7 @@ export async function logMessage(entry: MessageLogInput): Promise<void> {
       status: entry.status,
       provider_id: entry.providerId ?? null,
       error_message: entry.errorMessage ?? null,
+      org_id: entry.orgId ?? null,
       meta: entry.meta ?? null,
     })
   } catch (logErr) {

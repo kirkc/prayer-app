@@ -1,13 +1,13 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { getAdminUser } from '@/lib/admin'
+import { getAdminContext } from '@/lib/admin'
 import { createServerSupabaseClient, createServiceClient } from '@/lib/supabase-server'
 import TeamList, { Member } from '@/components/TeamList'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminPage() {
-  const admin = await getAdminUser()
+  const admin = await getAdminContext()
   if (!admin) redirect('/dashboard')
 
   const supabase = await createServerSupabaseClient()
@@ -19,17 +19,21 @@ export default async function AdminPage() {
     { data: authUsers },
     { data: responses },
   ] = await Promise.all([
-    // One cheap call returns every ministry number (all counts over small
-    // tables, computed server-side in a single round trip).
-    service.rpc('admin_dashboard_stats'),
+    // One cheap call returns every ministry number for this church (all
+    // counts over small tables, computed server-side in a single round trip).
+    service.rpc('admin_dashboard_stats', { p_org_id: admin.orgId }),
     supabase
       .from('profiles')
       .select('id, display_name, role, created_at, notify_new_requests, notify_frequency')
+      .eq('org_id', admin.orgId)
       .order('created_at'),
-    service.auth.admin.listUsers(),
-    supabase
+    service.auth.admin.listUsers({ page: 1, perPage: 1000 }),
+    // Service client: prayer_responses is locked down to service-role only
+    // once org RLS lands, so this admin-gated read scopes by org explicitly.
+    service
       .from('prayer_responses')
       .select('id, body, sent_at, profiles(display_name), prayer_requests(request)')
+      .eq('org_id', admin.orgId)
       .order('sent_at', { ascending: false })
       .limit(10),
   ])
@@ -46,8 +50,7 @@ export default async function AdminPage() {
     notify_frequency: p.notify_frequency,
   }))
 
-  const isSuperAdmin =
-    (profiles ?? []).find(p => p.id === admin.id)?.role === 'super_admin'
+  const isSuperAdmin = admin.role === 'super_admin'
 
   const s = (statsData ?? {}) as Record<string, number>
   const fmt = (v: number | undefined) => (v ?? 0).toLocaleString('en-US')
@@ -106,7 +109,7 @@ export default async function AdminPage() {
         {/* Team */}
         <section className="mb-10 animate-rise" style={{ animationDelay: '0.1s' }}>
           <h2 className="font-display text-xl font-light text-ink-800 mb-4">Prayer team</h2>
-          <TeamList members={members} currentUserId={admin.id} superAdmin={isSuperAdmin} />
+          <TeamList members={members} currentUserId={admin.user.id} superAdmin={isSuperAdmin} />
           <p className="text-xs text-ink-300 mt-3 leading-relaxed">
             Invited members receive an email link to choose their password.
             New members start with the Team role.

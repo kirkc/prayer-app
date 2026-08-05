@@ -31,12 +31,14 @@ export async function sendEmail({
   subject,
   html,
   kind = 'email.other',
+  orgId,
   meta,
 }: {
   to: string
   subject: string
   html: string
   kind?: string
+  orgId?: string | null
   meta?: Record<string, unknown>
 }): Promise<void> {
   try {
@@ -49,6 +51,7 @@ export async function sendEmail({
       subject,
       status: 'sent',
       providerId: data?.id ?? null,
+      orgId,
       meta,
     })
   } catch (err) {
@@ -59,6 +62,7 @@ export async function sendEmail({
       subject,
       status: 'failed',
       errorMessage: err instanceof Error ? err.message : String(err),
+      orgId,
       meta,
     })
     throw err

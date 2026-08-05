@@ -54,8 +54,9 @@ const COPY: Record<AuthEmailType, Copy> = {
     kind: 'auth.invite',
     subject: "You're invited to the prayer team",
     heading: "You're invited",
-    intro:
-      "You've been invited to join the Redemption Church Seattle prayer team. Set a password to get started.",
+    // Neutral fallback — real invites always pass orgName, which names the
+    // church in the intro instead.
+    intro: "You've been invited to join the prayer team. Set a password to get started.",
     ctaLabel: 'Accept invite',
     bodyHtml: NOTE,
   },
@@ -78,15 +79,25 @@ export async function sendAuthEmail({
   email,
   redirectBase,
   data,
+  orgName,
+  orgId,
   meta,
 }: {
   type: AuthEmailType
   email: string
   redirectBase: string
   data?: Record<string, unknown>
+  // Which church the email speaks for. Invites name it in the copy; orgId
+  // tags the message_log row for the ops dashboard.
+  orgName?: string
+  orgId?: string | null
   meta?: Record<string, unknown>
 }): Promise<SendAuthEmailResult> {
   const copy = COPY[type]
+  const intro =
+    type === 'invite' && orgName
+      ? `You've been invited to join the ${orgName} prayer team. Set a password to get started.`
+      : copy.intro
   const service = createServiceClient()
   const redirectTo = `${redirectBase}${copy.landing}`
 
@@ -110,6 +121,7 @@ export async function sendAuthEmail({
       subject: copy.subject,
       status: 'failed',
       errorMessage: error?.message,
+      orgId,
       meta,
     })
     return {
@@ -129,12 +141,13 @@ export async function sendAuthEmail({
     subject: copy.subject,
     html: renderEmail({
       heading: copy.heading,
-      intro: copy.intro,
+      intro,
       bodyHtml: copy.bodyHtml,
       cta: { label: copy.ctaLabel, url },
       footer: AUTH_FOOTER,
     }),
     kind: copy.kind,
+    orgId,
     meta,
   })
 

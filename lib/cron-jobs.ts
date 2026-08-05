@@ -1,6 +1,7 @@
 import { createServiceClient } from '@/lib/supabase-server'
 import { sendSms } from '@/lib/twilio'
 import { logError } from '@/lib/log'
+import { getAllOrgs } from '@/lib/orgs'
 import {
   getEligibleRecipients,
   sendDigestEmail,
@@ -26,62 +27,78 @@ export async function runNotificationsJob(): Promise<CronSummary> {
   const service = createServiceClient()
   const runAt = new Date()
 
-  // Same for every recipient — compute once for the summary line.
-  const { count } = await service
-    .from('prayer_requests')
-    .select('*', { count: 'exact', head: true })
-    .eq('status', 'active')
-  const activeTotal = count ?? 0
-
   const periods: ('daily' | 'weekly')[] = ['daily']
   if (runAt.getUTCDay() === WEEKLY_SEND_DOW) periods.push('weekly')
 
+  // One run covers every church: recipients, windows, and totals are all
+  // scoped per org so no digest ever mixes tenants.
+  const orgs = await getAllOrgs(service)
+
   let sent = 0
   let errors = 0
-  for (const period of periods) {
-    const recipients = await getEligibleRecipients(period)
-    for (const r of recipients) {
-      // Window = everything since we last processed this member, or one period
-      // back if they've never received a digest.
-      const since = r.notify_last_sent_at
-        ? new Date(r.notify_last_sent_at)
-        : new Date(runAt.getTime() - WINDOW_MS[period])
+  const perOrg: Record<string, { sent: number; errors: number }> = {}
 
-      const { data: rows, error } = await service
-        .from('prayer_requests')
-        .select('name, request, source, created_at')
-        .neq('status', 'spam')
-        .gt('created_at', since.toISOString())
-        .lte('created_at', runAt.toISOString())
-        .order('created_at', { ascending: true })
-      if (error) {
-        await logError('cron.notifications.digest_query', error, { recipient: r.email })
-        errors++
-        continue // leave the cursor so it retries next run
-      }
+  for (const org of orgs) {
+    const orgStats = { sent: 0, errors: 0 }
+    perOrg[org.slug] = orgStats
 
-      const requests = (rows ?? []) as NewRequestSummary[]
-      if (requests.length > 0) {
-        try {
-          await sendDigestEmail(r, requests, { period, activeTotal })
-          sent++
-        } catch (err) {
-          await logError('cron.notifications.digest_send', err, { recipient: r.email })
+    // Same for every recipient in the org — compute once for the summary line.
+    const { count } = await service
+      .from('prayer_requests')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'active')
+      .eq('org_id', org.id)
+    const activeTotal = count ?? 0
+
+    for (const period of periods) {
+      const recipients = await getEligibleRecipients(period, org.id)
+      for (const r of recipients) {
+        // Window = everything since we last processed this member, or one
+        // period back if they've never received a digest.
+        const since = r.notify_last_sent_at
+          ? new Date(r.notify_last_sent_at)
+          : new Date(runAt.getTime() - WINDOW_MS[period])
+
+        const { data: rows, error } = await service
+          .from('prayer_requests')
+          .select('name, request, source, created_at')
+          .eq('org_id', org.id)
+          .neq('status', 'spam')
+          .gt('created_at', since.toISOString())
+          .lte('created_at', runAt.toISOString())
+          .order('created_at', { ascending: true })
+        if (error) {
+          await logError('cron.notifications.digest_query', error, { recipient: r.email })
           errors++
-          continue // don't advance the cursor — retry the same window next run
+          orgStats.errors++
+          continue // leave the cursor so it retries next run
         }
-      }
 
-      // Advance the cursor after a successful send (or when there was nothing
-      // to send) so windows stay aligned to the cadence.
-      await service
-        .from('profiles')
-        .update({ notify_last_sent_at: runAt.toISOString() })
-        .eq('id', r.id)
+        const requests = (rows ?? []) as NewRequestSummary[]
+        if (requests.length > 0) {
+          try {
+            await sendDigestEmail(r, requests, { period, activeTotal, orgId: org.id })
+            sent++
+            orgStats.sent++
+          } catch (err) {
+            await logError('cron.notifications.digest_send', err, { recipient: r.email })
+            errors++
+            orgStats.errors++
+            continue // don't advance the cursor — retry the same window next run
+          }
+        }
+
+        // Advance the cursor after a successful send (or when there was
+        // nothing to send) so windows stay aligned to the cadence.
+        await service
+          .from('profiles')
+          .update({ notify_last_sent_at: runAt.toISOString() })
+          .eq('id', r.id)
+      }
     }
   }
 
-  return { sent, errors, periods }
+  return { sent, errors, periods, perOrg }
 }
 
 // For each requester who opted into "someone prayed for you" updates, count
@@ -94,7 +111,7 @@ export async function runPrayerUpdatesJob(): Promise<CronSummary> {
 
   const { data: requests, error } = await service
     .from('prayer_requests')
-    .select('id, phone, created_at, prayers_notified_at')
+    .select('id, phone, created_at, prayers_notified_at, org_id')
     .eq('notify_prayers', true)
     .eq('status', 'active')
     .not('phone', 'is', null)
@@ -145,6 +162,7 @@ export async function runPrayerUpdatesJob(): Promise<CronSummary> {
         body,
         to: r.phone as string,
         kind: 'sms.prayer_update',
+        orgId: r.org_id as string | null,
         meta: { request_id: r.id },
       })
       sent++

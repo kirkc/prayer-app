@@ -2,6 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
 import { sendSms } from '@/lib/twilio'
 import { notifyNewRequest } from '@/lib/notifications'
+import { getOrgByTwilioPhone } from '@/lib/orgs'
 import { logError } from '@/lib/log'
 import twilio from 'twilio'
 
@@ -26,6 +27,7 @@ export async function POST(req: NextRequest) {
   }
 
   const from = params['From']
+  const to = params['To']
   const body = params['Body']
 
   if (!body?.trim() || !from) {
@@ -36,22 +38,36 @@ export async function POST(req: NextRequest) {
 
   const supabase = createServiceClient()
 
+  // The number the requester texted identifies the church. An unknown To
+  // means a number Twilio routes here that no org claims — record it and
+  // return 200 so Twilio doesn't retry, but save nothing.
+  const org = to ? await getOrgByTwilioPhone(supabase, to) : null
+  if (!org) {
+    await logError('sms.unknown_number', new Error('No org for inbound number'), { to })
+    return new NextResponse('<Response></Response>', {
+      headers: { 'Content-Type': 'text/xml' },
+    })
+  }
+
   // REMOVE is a custom data-deletion keyword promised in our privacy policy.
   // (STOP/HELP/UNSUBSCRIBE etc. are handled automatically by Twilio before
   // this webhook is ever called, so we only need to handle REMOVE ourselves.)
+  // Scoped to this org: the same person may have texted another church.
   if (body.trim().toLowerCase() === 'remove') {
     const { error: deleteError } = await supabase
       .from('prayer_requests')
       .delete()
       .eq('phone', from)
+      .eq('org_id', org.id)
 
     if (deleteError) await logError('sms.remove_delete', deleteError, { from })
 
     try {
       await sendSms({
-        body: "Redemption Church Seattle: We've deleted your prayer request data from our records. Text us again anytime to share a new request.",
+        body: `${org.name}: We've deleted your prayer request data from our records. Text us again anytime to share a new request.`,
         to: from,
         kind: 'sms.remove_confirm',
+        orgId: org.id,
       })
     } catch (err) {
       await logError('sms.remove_confirm', err, { from })
@@ -64,7 +80,13 @@ export async function POST(req: NextRequest) {
 
   const { error } = await supabase
     .from('prayer_requests')
-    .insert({ phone: from, request: body.trim(), source: 'sms', notify_prayers: true })
+    .insert({
+      phone: from,
+      request: body.trim(),
+      source: 'sms',
+      notify_prayers: true,
+      org_id: org.id,
+    })
 
   // Only acknowledge if we actually saved the request — otherwise the sender
   // would be told "received" for something that was lost.
@@ -76,13 +98,14 @@ export async function POST(req: NextRequest) {
   }
 
   // Alert immediate-cadence team members (never the requester's phone number).
-  after(() => notifyNewRequest({ name: null, request: body.trim(), source: 'sms' }))
+  after(() => notifyNewRequest({ name: null, request: body.trim(), source: 'sms' }, org))
 
   try {
     await sendSms({
-      body: 'Redemption Church Seattle: Thank you for your prayer request. Our prayer team has received it and will be praying for you. We\'ll let you know when people pray. Msg freq varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help.',
+      body: `${org.name}: Thank you for your prayer request. Our prayer team has received it and will be praying for you. We'll let you know when people pray. Msg freq varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help.`,
       to: from,
       kind: 'sms.ack',
+      orgId: org.id,
     })
   } catch (err) {
     await logError('sms.ack', err, { from })

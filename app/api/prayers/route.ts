@@ -4,6 +4,7 @@ import { getPrayerFeed } from '@/lib/prayers'
 import { rateLimit, clientIp } from '@/lib/rate-limit'
 import { notifyNewRequest } from '@/lib/notifications'
 import { normalizePhone } from '@/lib/phone'
+import { getOrgBySlug, DEFAULT_ORG_SLUG } from '@/lib/orgs'
 import { logError } from '@/lib/log'
 import type { PrayerRequest } from '@/types'
 
@@ -95,6 +96,15 @@ export async function POST(req: NextRequest) {
   // Use the service role: the public form has no session, and we don't return
   // the stored row to the browser, so nothing sensitive is exposed.
   const supabase = createServiceClient()
+
+  // This legacy endpoint has no slug, so submissions belong to the default
+  // org. The per-org form route (Phase 4 of the org rollout) resolves by slug.
+  const org = await getOrgBySlug(supabase, DEFAULT_ORG_SLUG)
+  if (!org) {
+    await logError('prayers.web_insert', new Error('Default org not found'))
+    return json({ error: 'Could not save your request.' }, 500)
+  }
+
   const { error } = await supabase
     .from('prayer_requests')
     .insert({
@@ -103,6 +113,7 @@ export async function POST(req: NextRequest) {
       source: 'web',
       phone,
       notify_prayers: phone !== null,
+      org_id: org.id,
     })
 
   if (error) {
@@ -112,7 +123,7 @@ export async function POST(req: NextRequest) {
 
   // Alert immediate-cadence team members after the response is sent, so the
   // submitter isn't kept waiting on email fan-out.
-  after(() => notifyNewRequest({ name: name || null, request, source: 'web' }))
+  after(() => notifyNewRequest({ name: name || null, request, source: 'web' }, org))
 
   return json({ success: true }, 201)
 }

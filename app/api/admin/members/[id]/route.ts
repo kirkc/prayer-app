@@ -1,22 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAdminUser } from '@/lib/admin'
+import { getAdminContext } from '@/lib/admin'
 import { createServiceClient } from '@/lib/supabase-server'
 import { logError } from '@/lib/log'
 
 type Params = { params: Promise<{ id: string }> }
 
-// Super admin accounts are managed by migration only — they can't be
-// demoted, removed, or reset from the team UI.
-async function isSuperAdminTarget(id: string): Promise<boolean> {
+// The target's role and org. The service role bypasses RLS, so every route
+// here must check the target belongs to the caller's own church — a member of
+// another org is presented as simply not existing.
+async function getTargetProfile(
+  id: string
+): Promise<{ role: string; org_id: string | null } | null> {
   const service = createServiceClient()
-  const { data } = await service.from('profiles').select('role').eq('id', id).single()
-  return data?.role === 'super_admin'
+  const { data } = await service
+    .from('profiles')
+    .select('role, org_id')
+    .eq('id', id)
+    .single()
+  return (data as { role: string; org_id: string | null } | null) ?? null
 }
 
 // PATCH /api/admin/members/[id] — change a team member's role and/or display
-// name. Admin only ("admins and above" via getAdminUser).
+// name. Admin only ("admins and above" via getAdminContext).
 export async function PATCH(req: NextRequest, { params }: Params) {
-  const admin = await getAdminUser()
+  const admin = await getAdminContext()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
@@ -29,7 +36,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
     }
     // Guard against locking yourself out by demoting your own account.
-    if (id === admin.id) {
+    if (id === admin.user.id) {
       return NextResponse.json(
         { error: 'You cannot change your own role.' },
         { status: 400 }
@@ -50,9 +57,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: 'Nothing to update.' }, { status: 400 })
   }
 
+  const target = await getTargetProfile(id)
+  if (!target || target.org_id !== admin.orgId) {
+    return NextResponse.json({ error: 'Member not found.' }, { status: 404 })
+  }
   // Super admin accounts stay migration-managed — admins can't rename or
   // re-role them here.
-  if (await isSuperAdminTarget(id)) {
+  if (target.role === 'super_admin') {
     return NextResponse.json(
       { error: "This account can't be changed here." },
       { status: 400 }
@@ -76,17 +87,21 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 // cascade too (adjusting counts via trigger), while any replies they sent are
 // kept with the author set to null.
 export async function DELETE(_req: NextRequest, { params }: Params) {
-  const admin = await getAdminUser()
+  const admin = await getAdminContext()
   if (!admin) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
-  if (id === admin.id) {
+  if (id === admin.user.id) {
     return NextResponse.json(
       { error: 'You cannot remove your own account.' },
       { status: 400 }
     )
   }
-  if (await isSuperAdminTarget(id)) {
+  const target = await getTargetProfile(id)
+  if (!target || target.org_id !== admin.orgId) {
+    return NextResponse.json({ error: 'Member not found.' }, { status: 404 })
+  }
+  if (target.role === 'super_admin') {
     return NextResponse.json(
       { error: "This account can't be removed here." },
       { status: 400 }

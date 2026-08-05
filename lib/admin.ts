@@ -3,29 +3,41 @@ import type { User } from '@supabase/supabase-js'
 
 export type Role = 'prayer' | 'admin' | 'super_admin'
 
-// Server-side role lookup. Role lives in the database, so a client can't
-// spoof it.
-async function getUserWithRole(): Promise<{ user: User; role: Role } | null> {
+// The signed-in caller plus the profile facts routes act on. org_id scopes
+// every admin surface to the caller's own church; role gates the tier.
+export type MemberContext = {
+  user: User
+  role: Role
+  orgId: string
+}
+
+// Server-side role + org lookup. Both live in the database, so a client can't
+// spoof them.
+async function getUserWithRole(): Promise<MemberContext | null> {
   const supabase = await createServerSupabaseClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, org_id')
     .eq('id', user.id)
     .single()
 
-  if (!profile) return null
-  return { user, role: profile.role as Role }
+  if (!profile?.org_id) return null
+  return { user, role: profile.role as Role, orgId: profile.org_id as string }
 }
 
-// Returns the user if they are signed in AND an admin or super admin;
-// otherwise null. Super admins can do everything admins can.
-export async function getAdminUser(): Promise<User | null> {
+// Any signed-in team member, with their role and org.
+export async function getMemberContext(): Promise<MemberContext | null> {
+  return getUserWithRole()
+}
+
+// Admins and above, with their org for scoping admin queries.
+export async function getAdminContext(): Promise<MemberContext | null> {
   const found = await getUserWithRole()
   if (!found) return null
-  return found.role === 'admin' || found.role === 'super_admin' ? found.user : null
+  return found.role === 'admin' || found.role === 'super_admin' ? found : null
 }
 
 // Returns the user only for super admins — the operations tier (error log,

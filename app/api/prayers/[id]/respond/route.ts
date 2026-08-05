@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient, createServiceClient } from '@/lib/supabase-server'
+import { createServiceClient } from '@/lib/supabase-server'
+import { getMemberContext } from '@/lib/admin'
+import { getOrgById } from '@/lib/orgs'
 import { sendSms } from '@/lib/twilio'
 import { logError } from '@/lib/log'
 
@@ -10,9 +12,9 @@ type Params = { params: Promise<{ id: string }> }
 // request as replied.
 export async function POST(req: NextRequest, { params }: Params) {
   // 1. Confirm the caller is a signed-in team member.
-  const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const member = await getMemberContext()
+  if (!member) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const user = member.user
 
   const { id } = await params
   const { body } = await req.json().catch(() => ({}))
@@ -29,11 +31,14 @@ export async function POST(req: NextRequest, { params }: Params) {
   const service = createServiceClient()
   const { data: request, error: fetchError } = await service
     .from('prayer_requests')
-    .select('id, phone, source, replied, prayers_notified_at')
+    .select('id, phone, source, replied, prayers_notified_at, org_id')
     .eq('id', id)
     .single()
 
-  if (fetchError || !request) {
+  // The service role bypasses RLS, so the cross-org check lives here: a
+  // request outside the caller's church is indistinguishable from a missing
+  // one.
+  if (fetchError || !request || request.org_id !== member.orgId) {
     return NextResponse.json({ error: 'Prayer request not found.' }, { status: 404 })
   }
   if (!request.phone) {
@@ -43,13 +48,18 @@ export async function POST(req: NextRequest, { params }: Params) {
     )
   }
 
+  const org = await getOrgById(service, member.orgId)
+  if (!org) {
+    return NextResponse.json({ error: 'Prayer request not found.' }, { status: 404 })
+  }
+
   // An SMS requester texted us first, so replies land in a thread they
   // started. A web requester has never seen our number — if this is the
   // first text we've ever sent them for this request (no reply yet, no
   // prayer-update yet), identify who it's from.
   const isFirstContact =
     request.source === 'web' && !request.replied && request.prayers_notified_at == null
-  const smsBody = isFirstContact ? `Redemption Church Seattle: ${message}` : message
+  const smsBody = isFirstContact ? `${org.name}: ${message}` : message
 
   // 3. Send the outbound SMS.
   let twilioSid: string | null = null
@@ -58,6 +68,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       body: smsBody,
       to: request.phone,
       kind: 'sms.reply',
+      orgId: org.id,
       meta: { request_id: id, profile_id: user.id },
     })
     twilioSid = sent.sid
@@ -75,6 +86,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       body: message,
       twilio_message_sid: twilioSid,
       status: 'sent',
+      org_id: org.id,
     }),
     service.from('prayers').upsert(
       { request_id: id, profile_id: user.id },

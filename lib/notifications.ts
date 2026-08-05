@@ -2,6 +2,7 @@ import { createServiceClient } from '@/lib/supabase-server'
 import { sendEmail, renderEmail } from '@/lib/email'
 import { getAppUrl } from '@/lib/site-url'
 import { logError } from '@/lib/log'
+import type { Org } from '@/lib/orgs'
 import type { NotifyFrequency } from '@/types'
 
 // The non-sensitive slice of a prayer request we're willing to put in an email.
@@ -42,12 +43,12 @@ function requestCardHtml(r: NewRequestSummary): string {
   </table>`
 }
 
-// Team members who have new-request emails on, at the given cadence. Emails
-// live in auth.users (not profiles), so we map them the same way the admin
-// page does. listUsers paginates at 50/page — fine for a church team; revisit
-// if the roster ever grows past that.
+// Team members of one org who have new-request emails on, at the given
+// cadence. Emails live in auth.users (not profiles), so we map them the same
+// way the admin page does.
 export async function getEligibleRecipients(
-  frequency: NotifyFrequency
+  frequency: NotifyFrequency,
+  orgId: string
 ): Promise<Recipient[]> {
   const service = createServiceClient()
 
@@ -56,15 +57,16 @@ export async function getEligibleRecipients(
     .select('id, display_name, notify_last_sent_at')
     .eq('notify_new_requests', true)
     .eq('notify_frequency', frequency)
+    .eq('org_id', orgId)
   if (error) {
     // Returning [] here means zero notifications this run — worth a record,
     // since it otherwise looks identical to "nobody subscribed".
-    await logError('notify.recipients_query', error, { frequency })
+    await logError('notify.recipients_query', error, { frequency, org_id: orgId })
     return []
   }
   if (!profiles || profiles.length === 0) return []
 
-  const { data: authData } = await service.auth.admin.listUsers()
+  const { data: authData } = await service.auth.admin.listUsers({ page: 1, perPage: 1000 })
   const emailById = new Map((authData?.users ?? []).map(u => [u.id, u.email ?? '']))
 
   return profiles
@@ -77,10 +79,14 @@ export async function getEligibleRecipients(
     .filter(r => r.email)
 }
 
-// Immediate fan-out: email every 'immediate' subscriber about one new request.
-// Never throws — a bad address for one member must not break ingestion.
-export async function notifyNewRequest(summary: NewRequestSummary): Promise<void> {
-  const recipients = await getEligibleRecipients('immediate')
+// Immediate fan-out: email the org's 'immediate' subscribers about one new
+// request. Never throws — a bad address for one member must not break
+// ingestion.
+export async function notifyNewRequest(
+  summary: NewRequestSummary,
+  org: Org
+): Promise<void> {
+  const recipients = await getEligibleRecipients('immediate', org.id)
   if (recipients.length === 0) return
 
   const html = renderEmail({
@@ -98,6 +104,7 @@ export async function notifyNewRequest(summary: NewRequestSummary): Promise<void
           subject: 'New prayer request',
           html,
           kind: 'email.new_request',
+          orgId: org.id,
           meta: { profile_id: r.id },
         })
       } catch (err) {
@@ -112,7 +119,7 @@ export async function notifyNewRequest(summary: NewRequestSummary): Promise<void
 export async function sendDigestEmail(
   recipient: Recipient,
   requests: NewRequestSummary[],
-  opts: { period: 'daily' | 'weekly'; activeTotal: number }
+  opts: { period: 'daily' | 'weekly'; activeTotal: number; orgId?: string }
 ): Promise<void> {
   const count = requests.length
   const label = opts.period === 'daily' ? 'today' : 'this week'
@@ -127,6 +134,7 @@ export async function sendDigestEmail(
     subject: `Prayer requests — ${opts.period} summary`,
     html,
     kind: 'email.digest',
+    orgId: opts.orgId ?? null,
     meta: { profile_id: recipient.id, period: opts.period, count },
   })
 }
