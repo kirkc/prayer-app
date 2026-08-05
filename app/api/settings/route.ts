@@ -1,16 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createApiContext } from '@/lib/supabase-server'
 import { logError } from '@/lib/log'
 import type { NotifyFrequency } from '@/types'
 
 const FREQUENCIES: NotifyFrequency[] = ['immediate', 'daily', 'weekly']
 
+// GET /api/settings — the signed-in member's own notification prefs. Added
+// for the iOS settings screen; the web page reads them during SSR instead.
+export async function GET(req: NextRequest) {
+  const { supabase, user } = await createApiContext(req)
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('notify_new_requests, notify_frequency')
+    .eq('id', user.id)
+    .single()
+
+  if (!profile) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  return NextResponse.json(profile)
+}
+
 // PATCH /api/settings — update the signed-in member's own notification prefs.
 // User-scoped: RLS + the migration-004 column grant confine the write to their
 // own row and the two editable columns.
 export async function PATCH(req: NextRequest) {
-  const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await createApiContext(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json().catch(() => ({}))

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createApiContext } from '@/lib/supabase-server'
 import { sendAuthEmail } from '@/lib/auth-email'
 import { getSiteUrl } from '@/lib/site-url'
 import { logError } from '@/lib/log'
@@ -9,8 +9,7 @@ import { logError } from '@/lib/log'
 // lands on /set-password like invites and admin-sent resets. Sent via Resend
 // (sendAuthEmail), not Supabase Auth SMTP.
 export async function POST(req: NextRequest) {
-  const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user } = await createApiContext(req)
   if (!user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { error } = await sendAuthEmail({

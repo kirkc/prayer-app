@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
-import { getMemberContext } from '@/lib/admin'
+import { getApiMemberContext } from '@/lib/admin'
 import { getOrgById } from '@/lib/orgs'
 import { sendSms } from '@/lib/twilio'
 import { logError } from '@/lib/log'
@@ -12,7 +12,7 @@ type Params = { params: Promise<{ id: string }> }
 // request as replied.
 export async function POST(req: NextRequest, { params }: Params) {
   // 1. Confirm the caller is a signed-in team member.
-  const member = await getMemberContext()
+  const member = await getApiMemberContext(req)
   if (!member) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const user = member.user
 

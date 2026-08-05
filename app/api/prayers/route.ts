@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient, createServiceClient } from '@/lib/supabase-server'
-import { getPrayerFeed } from '@/lib/prayers'
+import { createApiContext, createServiceClient } from '@/lib/supabase-server'
+import { getPrayerFeed, getPrayerFeedPage } from '@/lib/prayers'
 import { getOrgBySlug, DEFAULT_ORG_SLUG } from '@/lib/orgs'
 import { submitPrayer, preflightResponse } from '@/lib/prayer-submit'
 import type { PrayerRequest } from '@/types'
@@ -19,9 +19,11 @@ export async function OPTIONS(req: NextRequest) {
 }
 
 // GET /api/prayers?status=active|archived|spam&q=searchterm
+// With ?limit=N (and optional ?cursor=) the response becomes a page —
+// { items, next_cursor } — for the iOS app; without it, the bare array the
+// web dashboard has always consumed. Auth: session cookie or Bearer token.
 export async function GET(req: NextRequest) {
-  const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { supabase, user } = await createApiContext(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const statusParam = req.nextUrl.searchParams.get('status') ?? 'active'
@@ -30,7 +32,15 @@ export async function GET(req: NextRequest) {
     : 'active'
   const search = req.nextUrl.searchParams.get('q') ?? undefined
 
+  const limitParam = req.nextUrl.searchParams.get('limit')
+  const limit = limitParam ? Math.min(Math.max(parseInt(limitParam, 10) || 0, 1), 100) : null
+
   try {
+    if (limit !== null) {
+      const cursor = req.nextUrl.searchParams.get('cursor') ?? undefined
+      const page = await getPrayerFeedPage(supabase, user.id, { status, search, limit, cursor })
+      return NextResponse.json(page)
+    }
     const feed = await getPrayerFeed(supabase, user.id, { status, search })
     return NextResponse.json(feed)
   } catch {

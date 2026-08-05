@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server'
-import { createServerSupabaseClient, createServiceClient } from '@/lib/supabase-server'
+import { NextRequest, NextResponse } from 'next/server'
+import { createApiContext, createServiceClient } from '@/lib/supabase-server'
 import { sendEmail, renderEmail } from '@/lib/email'
 import { getOrgForUser } from '@/lib/orgs'
 import { getAppUrl } from '@/lib/site-url'
@@ -7,9 +7,8 @@ import { logError } from '@/lib/log'
 
 // POST /api/settings/test — send a sample notification to the signed-in member
 // so they can confirm delivery lands in their inbox.
-export async function POST() {
-  const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
+export async function POST(req: NextRequest) {
+  const { user } = await createApiContext(req)
   if (!user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const org = await getOrgForUser(createServiceClient(), user.id).catch(() => null)

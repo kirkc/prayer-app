@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createApiContext } from '@/lib/supabase-server'
 import { logError } from '@/lib/log'
 
 type Params = { params: Promise<{ id: string }> }
 
 async function currentCount(
-  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
+  supabase: Awaited<ReturnType<typeof createApiContext>>['supabase'],
   id: string
 ): Promise<number> {
   const { data } = await supabase
@@ -18,9 +18,8 @@ async function currentCount(
 
 // POST /api/prayers/[id]/pray — record that the current user prayed.
 // Idempotent: the unique (request_id, profile_id) constraint prevents dupes.
-export async function POST(_req: NextRequest, { params }: Params) {
-  const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
+export async function POST(req: NextRequest, { params }: Params) {
+  const { supabase, user } = await createApiContext(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
@@ -41,9 +40,8 @@ export async function POST(_req: NextRequest, { params }: Params) {
 }
 
 // DELETE /api/prayers/[id]/pray — undo a prayer (toggle off).
-export async function DELETE(_req: NextRequest, { params }: Params) {
-  const supabase = await createServerSupabaseClient()
-  const { data: { user } } = await supabase.auth.getUser()
+export async function DELETE(req: NextRequest, { params }: Params) {
+  const { supabase, user } = await createApiContext(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id } = await params
