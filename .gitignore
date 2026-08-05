@@ -46,3 +46,9 @@ next-env.d.ts
 
 # Local DB backups (contain PII) — never commit
 backups/
+
+# Xcode — the project is generated from ios/project.yml
+ios/PrayerTeam.xcodeproj/
+ios/**/xcuserdata/
+ios/**/.build/
+ios/PrayerTeam/Info.plist
