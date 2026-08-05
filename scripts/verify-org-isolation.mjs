@@ -143,14 +143,15 @@ console.log('\nProbing as a signed-in member of the probe org…')
 }
 
 if (targetRow) {
+  // org_id is not in the authenticated column-grant list, so filtering on it
+  // is a permission error — even stricter than an empty result. Either way,
+  // a row coming back is the only failure.
   const { status, body } = await asMember(`/rest/v1/prayer_requests?select=id&org_id=eq.${targetRow.org_id}`)
-  check(
-    'filtering by another org id returns nothing',
-    status === 200 && Array.isArray(body) && body.length === 0,
-    `status ${status}, rows ${Array.isArray(body) ? body.length : JSON.stringify(body)}`
-  )
+  const leaked = status === 200 && Array.isArray(body) && body.length > 0
+  check('filtering by another org id leaks nothing', !leaked,
+    `status ${status}, body ${JSON.stringify(body).slice(0, 120)}`)
 } else {
-  check('filtering by another org id returns nothing', false, 'no non-probe row found to target')
+  check('filtering by another org id leaks nothing', false, 'no non-probe row found to target')
 }
 
 {
@@ -164,15 +165,17 @@ if (targetRow) {
 }
 
 if (targetRow) {
-  const { status, body } = await asMember(
+  // return=minimal mirrors the app's own PATCH (no .select()). Success with
+  // zero effect or a permission error both mean the row is untouchable; then
+  // verify service-side that the row's status did not change.
+  const before = (await svc(`/rest/v1/prayer_requests?select=status&id=eq.${targetRow.id}`)).body?.[0]?.status
+  const { status } = await asMember(
     `/rest/v1/prayer_requests?id=eq.${targetRow.id}`,
-    { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ status: 'archived' }) }
+    { method: 'PATCH', headers: { Prefer: 'return=minimal' }, body: JSON.stringify({ status: 'archived' }) }
   )
-  check(
-    "updating another org's row hits zero rows",
-    status === 200 && Array.isArray(body) && body.length === 0,
-    `status ${status}, body ${JSON.stringify(body).slice(0, 120)}`
-  )
+  const after = (await svc(`/rest/v1/prayer_requests?select=status&id=eq.${targetRow.id}`)).body?.[0]?.status
+  check("updating another org's row has no effect", before === after,
+    `status ${status}, before=${before} after=${after}`)
 }
 
 {
