@@ -77,7 +77,7 @@ export async function runNotificationsJob(): Promise<CronSummary> {
         const requests = (rows ?? []) as NewRequestSummary[]
         if (requests.length > 0) {
           try {
-            await sendDigestEmail(r, requests, { period, activeTotal, orgId: org.id })
+            await sendDigestEmail(r, requests, { period, activeTotal, org })
             sent++
             orgStats.sent++
           } catch (err) {
@@ -109,9 +109,9 @@ export async function runPrayerUpdatesJob(): Promise<CronSummary> {
   const service = createServiceClient()
   const runAt = new Date()
 
-  // The first update to a requester signs with their church's name — look the
-  // names up once for the whole run.
-  const orgNameById = new Map((await getAllOrgs(service)).map(o => [o.id, o.name]))
+  // Each update sends from and signs as the requester's own church — look the
+  // orgs up once for the whole run.
+  const orgById = new Map((await getAllOrgs(service)).map(o => [o.id, o]))
 
   const { data: requests, error } = await service
     .from('prayer_requests')
@@ -157,23 +157,25 @@ export async function runPrayerUpdatesJob(): Promise<CronSummary> {
     // (compliance); every one after that stays bare so it reads like a friend
     // checking in. `prayers_notified_at == null` means we've never texted them.
     const isFirst = r.prayers_notified_at == null
-    const orgName = orgNameById.get(r.org_id as string)
-    if (isFirst && !orgName) {
-      // A first-contact text must identify its sender — never send unsigned.
+    const org = orgById.get(r.org_id as string)
+    if (!org) {
+      // Updates must come from — and, on first contact, be signed by — the
+      // requester's own church; never send unattributed.
       await logError('cron.prayer_updates.missing_org', new Error('No org for request'), {
         request_id: r.id,
       })
       errors++
       continue
     }
-    const body = isFirst ? `${core} —${orgName}. Reply STOP to pause.` : core
+    const body = isFirst ? `${core} —${org.name}. Reply STOP to pause.` : core
 
     try {
       await sendSms({
         body,
         to: r.phone as string,
         kind: 'sms.prayer_update',
-        orgId: r.org_id as string | null,
+        from: org.twilio_phone,
+        orgId: org.id,
         meta: { request_id: r.id },
       })
       sent++

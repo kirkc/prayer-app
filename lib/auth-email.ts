@@ -1,6 +1,7 @@
 import type { User } from '@supabase/supabase-js'
 import { createServiceClient } from '@/lib/supabase-server'
 import { sendEmail, renderEmail } from '@/lib/email'
+import { getOrgForUser, type Org } from '@/lib/orgs'
 import { logMessage } from '@/lib/log'
 
 // Account (auth) emails — password resets, sign-in links, invites — sent through
@@ -80,8 +81,7 @@ export async function sendAuthEmail({
   redirectBase,
   data,
   linkType,
-  orgName,
-  orgId,
+  org,
   meta,
 }: {
   type: AuthEmailType
@@ -94,17 +94,13 @@ export async function sendAuthEmail({
   // invite marker the public signup endpoint can't forge), and a recovery
   // link — "choose your password" — is what a pre-created account needs.
   linkType?: 'recovery'
-  // Which church the email speaks for. Invites name it in the copy; orgId
-  // tags the message_log row for the ops dashboard.
-  orgName?: string
-  orgId?: string | null
+  // Which church the email speaks for (brand, sender, ops tagging). When the
+  // caller doesn't know (magic link, self-service reset), it's resolved from
+  // the recipient's own profile after the link is generated.
+  org?: Org | null
   meta?: Record<string, unknown>
 }): Promise<SendAuthEmailResult> {
   const copy = COPY[type]
-  const intro =
-    type === 'invite' && orgName
-      ? `You've been invited to join the ${orgName} prayer team. Set a password to get started.`
-      : copy.intro
   const service = createServiceClient()
   const redirectTo = `${redirectBase}${copy.landing}`
 
@@ -132,7 +128,7 @@ export async function sendAuthEmail({
       subject: copy.subject,
       status: 'failed',
       errorMessage: error?.message,
-      orgId,
+      orgId: org?.id,
       meta,
     })
     return {
@@ -143,6 +139,18 @@ export async function sendAuthEmail({
     }
   }
 
+  // The email speaks as the recipient's church. Fallback covers only a user
+  // with no profile (shouldn't exist) — it preserves the pre-multi-org
+  // wording rather than sending an unbranded email.
+  const brandOrg =
+    org ??
+    (link.user ? await getOrgForUser(service, link.user.id).catch(() => null) : null)
+  const brandName = brandOrg?.name ?? 'Redemption Church Seattle'
+  const intro =
+    type === 'invite'
+      ? `You've been invited to join the ${brandName} prayer team. Set a password to get started.`
+      : copy.intro
+
   const url = `${redirectBase}${copy.landing}?token_hash=${link.properties.hashed_token}&type=${effectiveLinkType}`
 
   // sendEmail logs the send (and any Resend failure) to message_log with the
@@ -151,6 +159,7 @@ export async function sendAuthEmail({
     to: email,
     subject: copy.subject,
     html: renderEmail({
+      brandName,
       heading: copy.heading,
       intro,
       bodyHtml: copy.bodyHtml,
@@ -158,7 +167,8 @@ export async function sendAuthEmail({
       footer: AUTH_FOOTER,
     }),
     kind: copy.kind,
-    orgId,
+    from: brandOrg?.from_email,
+    orgId: brandOrg?.id,
     meta,
   })
 

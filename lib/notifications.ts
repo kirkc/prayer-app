@@ -90,6 +90,7 @@ export async function notifyNewRequest(
   if (recipients.length === 0) return
 
   const html = renderEmail({
+    brandName: org.name,
     heading: 'New prayer request',
     intro: 'A new request just came in for the prayer team.',
     bodyHtml: requestCardHtml(summary),
@@ -104,6 +105,7 @@ export async function notifyNewRequest(
           subject: 'New prayer request',
           html,
           kind: 'email.new_request',
+          from: org.from_email,
           orgId: org.id,
           meta: { profile_id: r.id },
         })
@@ -119,11 +121,12 @@ export async function notifyNewRequest(
 export async function sendDigestEmail(
   recipient: Recipient,
   requests: NewRequestSummary[],
-  opts: { period: 'daily' | 'weekly'; activeTotal: number; orgId?: string }
+  opts: { period: 'daily' | 'weekly'; activeTotal: number; org: Org }
 ): Promise<void> {
   const count = requests.length
   const label = opts.period === 'daily' ? 'today' : 'this week'
   const html = renderEmail({
+    brandName: opts.org.name,
     heading: `${count} new prayer ${count === 1 ? 'request' : 'requests'} ${label}`,
     intro: `Here's your ${opts.period} summary. There ${opts.activeTotal === 1 ? 'is' : 'are'} ${opts.activeTotal} active ${opts.activeTotal === 1 ? 'request' : 'requests'} in all.`,
     bodyHtml: requests.map(requestCardHtml).join(''),
@@ -134,7 +137,8 @@ export async function sendDigestEmail(
     subject: `Prayer requests — ${opts.period} summary`,
     html,
     kind: 'email.digest',
-    orgId: opts.orgId ?? null,
+    from: opts.org.from_email,
+    orgId: opts.org.id,
     meta: { profile_id: recipient.id, period: opts.period, count },
   })
 }

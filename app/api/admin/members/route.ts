@@ -64,8 +64,7 @@ export async function POST(req: NextRequest) {
     linkType: 'recovery',
     email,
     redirectBase: getSiteUrl(req),
-    orgName: org.name,
-    orgId: org.id,
+    org,
     meta: { invited_by: admin.user.id },
   })
 

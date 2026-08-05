@@ -52,6 +52,14 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (!org) {
     return NextResponse.json({ error: 'Prayer request not found.' }, { status: 404 })
   }
+  // Belt-and-braces: a church without a Twilio number can't have phone-bearing
+  // requests, but never let a reply ride on another church's number.
+  if (!org.twilio_phone) {
+    return NextResponse.json(
+      { error: "SMS isn't set up for your church yet." },
+      { status: 400 }
+    )
+  }
 
   // An SMS requester texted us first, so replies land in a thread they
   // started. A web requester has never seen our number — if this is the
@@ -68,6 +76,7 @@ export async function POST(req: NextRequest, { params }: Params) {
       body: smsBody,
       to: request.phone,
       kind: 'sms.reply',
+      from: org.twilio_phone,
       orgId: org.id,
       meta: { request_id: id, profile_id: user.id },
     })

@@ -74,6 +74,7 @@ export async function POST(req: NextRequest) {
         body: `${org.name}: We've deleted your prayer request data from our records. Text us again anytime to share a new request.`,
         to: from,
         kind: 'sms.remove_confirm',
+        from: org.twilio_phone,
         orgId: org.id,
       })
     } catch (err) {
@@ -112,6 +113,7 @@ export async function POST(req: NextRequest) {
       body: `${org.name}: Thank you for your prayer request. Our prayer team has received it and will be praying for you. We'll let you know when people pray. Msg freq varies. Msg & data rates may apply. Reply STOP to opt out, HELP for help.`,
       to: from,
       kind: 'sms.ack',
+      from: org.twilio_phone,
       orgId: org.id,
     })
   } catch (err) {

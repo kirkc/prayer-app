@@ -36,7 +36,6 @@ export async function POST(req: NextRequest, { params }: Params) {
     type: 'recovery',
     email: data.user.email,
     redirectBase: getSiteUrl(req),
-    orgId: admin.orgId,
     meta: { requested_by: admin.user.id },
   })
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
-import { createServerSupabaseClient } from '@/lib/supabase-server'
+import { createServerSupabaseClient, createServiceClient } from '@/lib/supabase-server'
 import { sendEmail, renderEmail } from '@/lib/email'
+import { getOrgForUser } from '@/lib/orgs'
 import { getAppUrl } from '@/lib/site-url'
 import { logError } from '@/lib/log'
 
@@ -11,7 +12,11 @@ export async function POST() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const org = await getOrgForUser(createServiceClient(), user.id).catch(() => null)
+  if (!org) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const html = renderEmail({
+    brandName: org.name,
     heading: 'Test notification',
     intro: 'This is a test from your prayer-team notification settings. If you can read this, email notifications are working.',
     bodyHtml: `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e0e8e8;border-radius:16px;margin-bottom:12px;">
@@ -27,6 +32,8 @@ export async function POST() {
       subject: 'Test notification',
       html,
       kind: 'email.test',
+      from: org.from_email,
+      orgId: org.id,
       meta: { profile_id: user.id },
     })
   } catch (err) {

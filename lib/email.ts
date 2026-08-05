@@ -18,9 +18,15 @@ function getClient(): Resend {
   return client
 }
 
+// Sender fallback chain: an org's own verified sender → the neutral shared
+// domain (for churches without one) → the original env default.
 const FROM =
   process.env.NOTIFY_FROM_EMAIL ??
   'Redemption Church Seattle <prayer@redemptionseattle.org>'
+
+function resolveFrom(from?: string | null): string {
+  return from ?? process.env.NEUTRAL_FROM_EMAIL ?? FROM
+}
 
 // Sends and records the attempt in message_log (kind identifies the email
 // type on the ops dashboard; the Resend id lets the Resend webhook update the
@@ -31,6 +37,7 @@ export async function sendEmail({
   subject,
   html,
   kind = 'email.other',
+  from,
   orgId,
   meta,
 }: {
@@ -38,11 +45,14 @@ export async function sendEmail({
   subject: string
   html: string
   kind?: string
+  // The org's from_email; falls back to the neutral shared sender, then the
+  // env default.
+  from?: string | null
   orgId?: string | null
   meta?: Record<string, unknown>
 }): Promise<void> {
   try {
-    const { data, error } = await getClient().emails.send({ from: FROM, to, subject, html })
+    const { data, error } = await getClient().emails.send({ from: resolveFrom(from), to, subject, html })
     if (error) throw new Error(`Resend send failed: ${error.message}`)
     await logMessage({
       channel: 'email',
@@ -76,12 +86,16 @@ export async function sendEmail({
 // Palette mirrors app/globals.css (sage / mist / ink).
 // ---------------------------------------------------------------------------
 export function renderEmail({
+  brandName,
   heading,
   intro,
   bodyHtml,
   cta,
   footer,
 }: {
+  // The church name shown in the eyebrow — each org's emails speak as that
+  // church.
+  brandName: string
   heading: string
   intro: string
   bodyHtml: string
@@ -111,7 +125,7 @@ export function renderEmail({
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border:1px solid #e0e8e8;border-radius:24px;overflow:hidden;">
             <tr>
               <td style="padding:32px 32px 8px;">
-                <p style="margin:0 0 4px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#a3b1b5;">Redemption Church Seattle</p>
+                <p style="margin:0 0 4px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#a3b1b5;">${brandName}</p>
                 <h1 style="margin:0 0 12px;font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:24px;color:#2a363c;">${heading}</h1>
                 <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#4c5e66;">${intro}</p>
               </td>

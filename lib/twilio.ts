@@ -42,13 +42,15 @@ export async function sendSms(opts: {
   to: string
   body: string
   kind: string
+  // The org's own Twilio number; the env default covers the founding church.
+  from?: string | null
   orgId?: string | null
   meta?: Record<string, unknown>
 }): Promise<{ sid: string }> {
   try {
     const sent = await getClient().messages.create({
       body: opts.body,
-      from: TWILIO_PHONE_NUMBER,
+      from: opts.from ?? TWILIO_PHONE_NUMBER,
       to: opts.to,
       statusCallback: statusCallbackUrl(),
     })
