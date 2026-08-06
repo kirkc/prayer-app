@@ -58,7 +58,12 @@ final class APIClient {
         _ path: String,
         body: (some Encodable)?
     ) async throws -> T {
-        var request = URLRequest(url: Config.apiBase.appending(path: path))
+        // Not appending(path:) — that percent-encodes "?" and would turn a
+        // query string into a literal path segment.
+        guard let url = URL(string: path, relativeTo: Config.apiBase) else {
+            throw APIError(status: 0, message: "Bad request path.")
+        }
+        var request = URLRequest(url: url)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(try await auth.accessToken())", forHTTPHeaderField: "Authorization")

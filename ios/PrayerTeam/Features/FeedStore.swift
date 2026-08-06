@@ -30,6 +30,7 @@ final class FeedStore {
             nextCursor = page.nextCursor
             me = try? await mine
         } catch {
+            print("[feed] loadInitial failed:", error)
             errorMessage = (error as? APIError)?.message ?? "Could not load prayer requests."
         }
     }

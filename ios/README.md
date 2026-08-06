@@ -30,6 +30,17 @@ Debug builds call `http://localhost:3005` (run `npm run dev` in the repo
 root); Release builds call the production domain. Sign in with your normal
 prayer-team account.
 
+CLI builds must keep code signing on ("Sign to Run Locally" needs no team):
+
+```
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer   xcodebuild -project PrayerTeam.xcodeproj -scheme PrayerTeam   -destination 'platform=iOS Simulator,name=iPhone 17' build
+```
+
+Do NOT pass `CODE_SIGNING_ALLOWED=NO`: an unsigned simulator binary cannot
+use the Keychain, so supabase-swift silently fails to persist the session
+and every API call throws `sessionMissing` right after a successful
+sign-in.
+
 ## Layout
 
 ```
