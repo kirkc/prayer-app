@@ -1,12 +1,16 @@
 import Foundation
 
-// Feed state: cursor pagination, pull-to-refresh, and the optimistic pray
-// toggle (mirroring the web's revert-on-failure idiom).
+// Feed state: status filter, cursor pagination, pull-to-refresh, and the
+// optimistic mutations (pray toggle, triage) mirroring the web's
+// revert-on-failure idiom.
 @Observable
 @MainActor
 final class FeedStore {
-    private let api: APIClient
+    let api: APIClient
     private let pageSize = 25
+
+    // "active" | "archived" | "spam" — mirrors the web dashboard's tabs.
+    var status = "active"
 
     private(set) var items: [PrayerRequest] = []
     private(set) var nextCursor: String?
@@ -18,6 +22,12 @@ final class FeedStore {
         self.api = api
     }
 
+    var smsEnabled: Bool { me?.org.smsEnabled ?? false }
+
+    private var feedPath: String {
+        "/api/prayers?status=\(status)&limit=\(pageSize)"
+    }
+
     func loadInitial() async {
         guard !loading else { return }
         loading = true
@@ -25,7 +35,7 @@ final class FeedStore {
         defer { loading = false }
         do {
             async let mine: Me = api.get("/api/me")
-            let page: FeedPage = try await api.get("/api/prayers?limit=\(pageSize)")
+            let page: FeedPage = try await api.get(feedPath)
             items = page.items
             nextCursor = page.nextCursor
             me = try? await mine
@@ -35,6 +45,14 @@ final class FeedStore {
         }
     }
 
+    func switchStatus(to newStatus: String) async {
+        guard newStatus != status else { return }
+        status = newStatus
+        items = []
+        nextCursor = nil
+        await loadInitial()
+    }
+
     func loadMoreIfNeeded(current: PrayerRequest) async {
         guard let cursor = nextCursor, !loading,
               current.id == items.last?.id else { return }
@@ -42,7 +60,7 @@ final class FeedStore {
         defer { loading = false }
         do {
             let escaped = cursor.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? cursor
-            let page: FeedPage = try await api.get("/api/prayers?limit=\(pageSize)&cursor=\(escaped)")
+            let page: FeedPage = try await api.get("\(feedPath)&cursor=\(escaped)")
             items.append(contentsOf: page.items)
             nextCursor = page.nextCursor
         } catch {
@@ -52,7 +70,7 @@ final class FeedStore {
 
     func refresh() async {
         do {
-            let page: FeedPage = try await api.get("/api/prayers?limit=\(pageSize)")
+            let page: FeedPage = try await api.get(feedPath)
             items = page.items
             nextCursor = page.nextCursor
             errorMessage = nil
@@ -83,5 +101,34 @@ final class FeedStore {
                 items[i].prayedCount += wasPrayed ? 1 : -1
             }
         }
+    }
+
+    // Archive / mark spam / restore. The row leaves this status's list
+    // immediately; a failed call puts it back.
+    func setStatus(_ request: PrayerRequest, to newStatus: String) async {
+        guard let idx = items.firstIndex(where: { $0.id == request.id }) else { return }
+        let removed = items.remove(at: idx)
+        do {
+            let _: SimpleSuccess = try await api.patch(
+                "/api/prayers/\(request.id)",
+                body: ["status": newStatus]
+            )
+        } catch {
+            items.insert(removed, at: min(idx, items.count))
+            errorMessage = (error as? APIError)?.message ?? "Could not update the request."
+        }
+    }
+
+    // A reply just went out: the server marked it replied and counted it as
+    // a prayer — reflect that on the card.
+    func applyRespondResult(_ requestId: String, _ result: RespondResult) {
+        guard let i = items.firstIndex(where: { $0.id == requestId }) else { return }
+        items[i].replied = result.replied
+        items[i].youPrayed = result.youPrayed
+        items[i].prayedCount = result.prayedCount
+    }
+
+    func current(_ id: String) -> PrayerRequest? {
+        items.first(where: { $0.id == id })
     }
 }

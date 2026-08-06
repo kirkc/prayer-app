@@ -16,15 +16,7 @@ struct FeedView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.mist50.ignoresSafeArea())
-            .navigationTitle("")
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text("Prayer requests")
-                            .font(.display(24))
-                            .foregroundStyle(Color.ink800)
-                    }
-                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showSettings = true
@@ -36,6 +28,11 @@ struct FeedView: View {
             }
             .sheet(isPresented: $showSettings) {
                 SettingsView()
+            }
+            .navigationDestination(for: PrayerRequest.self) { prayer in
+                if let store {
+                    RequestDetailView(store: store, requestId: prayer.id)
+                }
             }
         }
         .task {
@@ -49,47 +46,146 @@ struct FeedView: View {
 
     @ViewBuilder
     private func feed(_ store: FeedStore) -> some View {
-        if let error = store.errorMessage, store.items.isEmpty {
-            VStack(spacing: 12) {
-                Text(error)
-                    .font(.system(size: 14))
-                    .foregroundStyle(Color.ink400)
-                Button("Try again") { Task { await store.loadInitial() } }
-                    .buttonStyle(SoftButtonStyle())
-            }
-            .padding(32)
-        } else if store.items.isEmpty && !store.loading {
-            VStack(spacing: 8) {
-                Text("All quiet")
-                    .font(.display(22))
-                    .foregroundStyle(Color.ink800)
-                Text("New prayer requests will appear here.")
-                    .font(.system(size: 14))
-                    .foregroundStyle(Color.ink400)
-            }
-            .padding(32)
-        } else {
-            ScrollView {
-                LazyVStack(spacing: 12) {
-                    ForEach(Array(store.items.enumerated()), id: \.element.id) { index, prayer in
+        List {
+            header(store)
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 4, trailing: 16))
+
+            if let error = store.errorMessage, store.items.isEmpty {
+                VStack(spacing: 12) {
+                    Text(error)
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.ink400)
+                    Button("Try again") { Task { await store.loadInitial() } }
+                        .buttonStyle(SoftButtonStyle())
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+            } else if store.items.isEmpty && !store.loading {
+                VStack(spacing: 8) {
+                    Text(emptyTitle(store.status))
+                        .font(.display(22))
+                        .foregroundStyle(Color.ink800)
+                    Text(emptySubtitle(store.status))
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.ink400)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 40)
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+            } else {
+                ForEach(Array(store.items.enumerated()), id: \.element.id) { index, prayer in
+                    ZStack {
+                        NavigationLink(value: prayer) { EmptyView() }.opacity(0)
                         PrayerCardView(prayer: prayer) {
                             Task { await store.togglePray(prayer) }
                         }
-                        .riseIn(delay: min(Double(index) * 0.06, 0.4))
-                        .onAppear {
-                            Task { await store.loadMoreIfNeeded(current: prayer) }
-                        }
                     }
-                    if store.loading && !store.items.isEmpty {
-                        ProgressView()
-                            .tint(Color.sage500)
-                            .padding(.vertical, 16)
+                    .riseIn(delay: min(Double(index) * 0.06, 0.4))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        trailingActions(store, prayer)
+                    }
+                    .onAppear {
+                        Task { await store.loadMoreIfNeeded(current: prayer) }
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                if store.loading && !store.items.isEmpty {
+                    ProgressView()
+                        .tint(Color.sage500)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                }
             }
-            .refreshable { await store.refresh() }
+        }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .refreshable { await store.refresh() }
+    }
+
+    private func header(_ store: FeedStore) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Prayer requests")
+                    .font(.display(30))
+                    .foregroundStyle(Color.ink800)
+                if let org = store.me?.org {
+                    Text(org.name)
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.ink400)
+                }
+            }
+
+            // The web's segmented pill: Active / Archived / Spam.
+            HStack(spacing: 4) {
+                ForEach([("active", "Active"), ("archived", "Archived"), ("spam", "Spam")], id: \.0) { value, label in
+                    Button {
+                        Task { await store.switchStatus(to: value) }
+                    } label: {
+                        Text(label)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundStyle(store.status == value ? Color.ink700 : Color.ink400)
+                            .padding(.vertical, 6)
+                            .padding(.horizontal, 14)
+                            .background(
+                                store.status == value ? Color.white : Color.clear,
+                                in: Capsule()
+                            )
+                            .shadow(color: store.status == value ? Color.ink800.opacity(0.06) : .clear,
+                                    radius: 2, y: 1)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(4)
+            .background(Color.mist100, in: Capsule())
+        }
+        .padding(.bottom, 4)
+    }
+
+    @ViewBuilder
+    private func trailingActions(_ store: FeedStore, _ prayer: PrayerRequest) -> some View {
+        switch store.status {
+        case "active":
+            Button {
+                Task { await store.setStatus(prayer, to: "archived") }
+            } label: {
+                Label("Archive", systemImage: "archivebox")
+            }
+            .tint(Color.sage600)
+            Button {
+                Task { await store.setStatus(prayer, to: "spam") }
+            } label: {
+                Label("Spam", systemImage: "nosign")
+            }
+            .tint(Color.ink500)
+        default:
+            Button {
+                Task { await store.setStatus(prayer, to: "active") }
+            } label: {
+                Label("Restore", systemImage: "arrow.uturn.backward")
+            }
+            .tint(Color.sage600)
+        }
+    }
+
+    private func emptyTitle(_ status: String) -> String {
+        status == "active" ? "All quiet" : "Nothing here"
+    }
+
+    private func emptySubtitle(_ status: String) -> String {
+        switch status {
+        case "archived": return "Archived requests will appear here."
+        case "spam": return "Requests marked as spam will appear here."
+        default: return "New prayer requests will appear here."
         }
     }
 }

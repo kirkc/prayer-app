@@ -26,6 +26,17 @@ struct PrayResponse: Codable {
     let prayedCount: Int
 }
 
+struct RespondResult: Codable {
+    let success: Bool
+    let replied: Bool
+    let youPrayed: Bool
+    let prayedCount: Int
+}
+
+struct SimpleSuccess: Codable {
+    let success: Bool
+}
+
 struct Me: Codable {
     struct Org: Codable {
         let name: String
