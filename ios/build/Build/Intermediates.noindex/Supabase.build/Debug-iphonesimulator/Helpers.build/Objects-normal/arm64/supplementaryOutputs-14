@@ -1,0 +1,23 @@
+{
+  "/Users/kirk/Dev/prayer-app/ios/build/SourcePackages/checkouts/supabase-swift/Sources/Helpers/Base64URL.swift" : {
+    "const-values" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/Base64URL.swiftconstvalues",
+    "dependencies" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/Base64URL.d",
+    "diagnostics" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/Base64URL.dia",
+    "object" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/Base64URL.o",
+    "swift-dependencies" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/Base64URL.swiftdeps"
+  },
+  "/Users/kirk/Dev/prayer-app/ios/build/SourcePackages/checkouts/supabase-swift/Sources/Helpers/Codable.swift" : {
+    "const-values" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/Codable.swiftconstvalues",
+    "dependencies" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/Codable.d",
+    "diagnostics" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/Codable.dia",
+    "object" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/Codable.o",
+    "swift-dependencies" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/Codable.swiftdeps"
+  },
+  "/Users/kirk/Dev/prayer-app/ios/build/SourcePackages/checkouts/supabase-swift/Sources/Helpers/DateFormatter.swift" : {
+    "const-values" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/DateFormatter.swiftconstvalues",
+    "dependencies" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/DateFormatter.d",
+    "diagnostics" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/DateFormatter.dia",
+    "object" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/DateFormatter.o",
+    "swift-dependencies" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/DateFormatter.swiftdeps"
+  }
+}

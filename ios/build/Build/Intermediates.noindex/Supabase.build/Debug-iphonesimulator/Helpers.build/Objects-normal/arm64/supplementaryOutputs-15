@@ -1,0 +1,23 @@
+{
+  "/Users/kirk/Dev/prayer-app/ios/build/SourcePackages/checkouts/supabase-swift/Sources/Helpers/EventEmitter.swift" : {
+    "const-values" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/EventEmitter.swiftconstvalues",
+    "dependencies" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/EventEmitter.d",
+    "diagnostics" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/EventEmitter.dia",
+    "object" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/EventEmitter.o",
+    "swift-dependencies" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/EventEmitter.swiftdeps"
+  },
+  "/Users/kirk/Dev/prayer-app/ios/build/SourcePackages/checkouts/supabase-swift/Sources/Helpers/FoundationExtensions.swift" : {
+    "const-values" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/FoundationExtensions.swiftconstvalues",
+    "dependencies" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/FoundationExtensions.d",
+    "diagnostics" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/FoundationExtensions.dia",
+    "object" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/FoundationExtensions.o",
+    "swift-dependencies" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/FoundationExtensions.swiftdeps"
+  },
+  "/Users/kirk/Dev/prayer-app/ios/build/SourcePackages/checkouts/supabase-swift/Sources/Helpers/HTTP/HTTPClient.swift" : {
+    "const-values" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/HTTPClient.swiftconstvalues",
+    "dependencies" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/HTTPClient.d",
+    "diagnostics" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/HTTPClient.dia",
+    "object" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/HTTPClient.o",
+    "swift-dependencies" : "/Users/kirk/Dev/prayer-app/ios/build/Build/Intermediates.noindex/Supabase.build/Debug-iphonesimulator/Helpers.build/Objects-normal/arm64/HTTPClient.swiftdeps"
+  }
+}

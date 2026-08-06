@@ -8,6 +8,7 @@ struct PrayerTeamApp: App {
         WindowGroup {
             RootView()
                 .environment(auth)
+                .tint(.sage600)
                 .task { await auth.start() }
         }
     }

@@ -6,6 +6,10 @@ struct APIError: Error, LocalizedError {
     var errorDescription: String? { message }
 }
 
+private struct ServerError: Decodable {
+    let error: String?
+}
+
 // Thin client for the app's own Next.js API. Every call carries the Supabase
 // access token; the server validates it and applies the same row-level
 // security a web session gets.
@@ -66,7 +70,6 @@ final class APIClient {
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
 
         guard (200..<300).contains(status) else {
-            struct ServerError: Decodable { let error: String? }
             let message = (try? decoder.decode(ServerError.self, from: data))?.error
             throw APIError(status: status, message: message ?? "Something went wrong. Please try again.")
         }
