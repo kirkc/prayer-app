@@ -131,4 +131,12 @@ final class FeedStore {
     func current(_ id: String) -> PrayerRequest? {
         items.first(where: { $0.id == id })
     }
+
+    // A push deep-link fetched a request that isn't in the visible list
+    // (different status, or newer than the last refresh) — front-insert it so
+    // the detail view has live state to read.
+    func insertFetched(_ request: PrayerRequest) {
+        guard current(request.id) == nil else { return }
+        items.insert(request, at: 0)
+    }
 }

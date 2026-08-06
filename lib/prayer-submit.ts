@@ -84,9 +84,10 @@ export async function submitPrayer(req: NextRequest, org: Org): Promise<NextResp
   }
 
   // Use the service role: the public form has no session, and we don't return
-  // the stored row to the browser, so nothing sensitive is exposed.
+  // the stored row to the browser, so nothing sensitive is exposed. The id
+  // comes back only so the team's push notifications can deep-link.
   const supabase = createServiceClient()
-  const { error } = await supabase
+  const { data: inserted, error } = await supabase
     .from('prayer_requests')
     .insert({
       name: name || null,
@@ -96,6 +97,8 @@ export async function submitPrayer(req: NextRequest, org: Org): Promise<NextResp
       notify_prayers: phone !== null,
       org_id: org.id,
     })
+    .select('id')
+    .single()
 
   if (error) {
     await logError('prayers.web_insert', error, { org_id: org.id })
@@ -104,7 +107,9 @@ export async function submitPrayer(req: NextRequest, org: Org): Promise<NextResp
 
   // Alert immediate-cadence team members after the response is sent, so the
   // submitter isn't kept waiting on email fan-out.
-  after(() => notifyNewRequest({ name: name || null, request, source: 'web' }, org))
+  after(() =>
+    notifyNewRequest({ id: inserted?.id, name: name || null, request, source: 'web' }, org)
+  )
 
   return json({ success: true }, 201)
 }

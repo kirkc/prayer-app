@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('notify_new_requests, notify_frequency')
+    .select('notify_new_requests, notify_frequency, notify_push')
     .eq('id', user.id)
     .single()
 
@@ -29,13 +29,23 @@ export async function PATCH(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json().catch(() => ({}))
-  const update: { notify_new_requests?: boolean; notify_frequency?: NotifyFrequency } = {}
+  const update: {
+    notify_new_requests?: boolean
+    notify_frequency?: NotifyFrequency
+    notify_push?: boolean
+  } = {}
 
   if ('notify_new_requests' in body) {
     if (typeof body.notify_new_requests !== 'boolean') {
       return NextResponse.json({ error: 'Invalid value.' }, { status: 400 })
     }
     update.notify_new_requests = body.notify_new_requests
+  }
+  if ('notify_push' in body) {
+    if (typeof body.notify_push !== 'boolean') {
+      return NextResponse.json({ error: 'Invalid value.' }, { status: 400 })
+    }
+    update.notify_push = body.notify_push
   }
   if ('notify_frequency' in body) {
     if (!FREQUENCIES.includes(body.notify_frequency)) {

@@ -94,6 +94,21 @@ struct SettingsView: View {
                 .foregroundStyle(Color.ink800)
 
             Toggle(isOn: Binding(
+                get: { current.notifyPush },
+                set: { newValue in Task { await save(notifyPush: newValue) } }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Push notifications")
+                        .font(.system(size: 14))
+                        .foregroundStyle(Color.ink700)
+                    Text("An instant tap when a new request arrives")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.ink300)
+                }
+            }
+            .tint(Color.sage500)
+
+            Toggle(isOn: Binding(
                 get: { current.notifyNewRequests },
                 set: { newValue in Task { await save(notifyNewRequests: newValue) } }
             )) {
@@ -155,16 +170,22 @@ struct SettingsView: View {
         .card()
     }
 
-    private func save(notifyNewRequests: Bool? = nil, frequency: String? = nil) async {
+    private func save(
+        notifyNewRequests: Bool? = nil,
+        frequency: String? = nil,
+        notifyPush: Bool? = nil
+    ) async {
         guard let api, var updated = prefs else { return }
         let previous = prefs
         if let notifyNewRequests { updated.notifyNewRequests = notifyNewRequests }
         if let frequency { updated.notifyFrequency = frequency }
+        if let notifyPush { updated.notifyPush = notifyPush }
         prefs = updated
 
         var body: [String: AnyEncodableValue] = [:]
         if let notifyNewRequests { body["notify_new_requests"] = .bool(notifyNewRequests) }
         if let frequency { body["notify_frequency"] = .string(frequency) }
+        if let notifyPush { body["notify_push"] = .bool(notifyPush) }
 
         do {
             let _: SimpleSuccess = try await api.patch("/api/settings", body: body)

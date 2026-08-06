@@ -28,6 +28,11 @@ targets:
         # Debug builds talk to the dev server over http://localhost.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+    entitlements:
+      path: PrayerTeam/PrayerTeam.entitlements
+      properties:
+        # Development here; distribution signing swaps in production.
+        aps-environment: development
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: org.redemptionseattle.prayerteam
@@ -35,5 +40,5 @@ targets:
         MARKETING_VERSION: 0.1.0
         SWIFT_VERSION: '5.10'
         TARGETED_DEVICE_FAMILY: '1'
-        # Set your team in Xcode → Signing & Capabilities on first open.
         CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: PZMJ856J43

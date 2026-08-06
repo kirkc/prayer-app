@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase-server'
 import { sendEmail, renderEmail } from '@/lib/email'
+import { sendPushes } from '@/lib/apns'
 import { getAppUrl } from '@/lib/site-url'
 import { logError } from '@/lib/log'
 import type { Org } from '@/lib/orgs'
@@ -8,6 +9,9 @@ import type { NotifyFrequency } from '@/types'
 // The non-sensitive slice of a prayer request we're willing to put in an email.
 // Deliberately no `phone` — that never leaves the server (see migration 002).
 export type NewRequestSummary = {
+  // Present when the ingest path captured the inserted row's id — lets the
+  // push notification deep-link straight to the request.
+  id?: string
   name: string | null
   request: string
   source: 'web' | 'sms'
@@ -79,13 +83,43 @@ export async function getEligibleRecipients(
     .filter(r => r.email)
 }
 
-// Immediate fan-out: email the org's 'immediate' subscribers about one new
+// Instant push to every org member with push on. Deliberately independent of
+// the email cadence — a member on a weekly digest still feels the tap.
+async function pushNewRequest(summary: NewRequestSummary, org: Org): Promise<void> {
+  const service = createServiceClient()
+  const { data: rows, error } = await service
+    .from('device_tokens')
+    .select('token, environment, profiles!inner(notify_push, org_id)')
+    .eq('profiles.org_id', org.id)
+    .eq('profiles.notify_push', true)
+  if (error) {
+    await logError('push.recipients_query', error, { org_id: org.id })
+    return
+  }
+  if (!rows || rows.length === 0) return
+
+  const who = summary.name?.trim() || 'Anonymous'
+  await sendPushes(
+    rows.map(r => ({
+      token: r.token as string,
+      environment: r.environment as 'sandbox' | 'production',
+      title: 'New prayer request',
+      body: `${who} · ${truncate(summary.request.trim(), 120)}`,
+      data: summary.id ? { request_id: summary.id } : undefined,
+      threadId: org.slug,
+    }))
+  )
+}
+
+// Immediate fan-out: push + email the org's subscribers about one new
 // request. Never throws — a bad address for one member must not break
 // ingestion.
 export async function notifyNewRequest(
   summary: NewRequestSummary,
   org: Org
 ): Promise<void> {
+  await pushNewRequest(summary, org).catch(err => logError('push.fanout', err))
+
   const recipients = await getEligibleRecipients('immediate', org.id)
   if (recipients.length === 0) return
 

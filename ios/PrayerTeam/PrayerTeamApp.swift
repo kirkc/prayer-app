@@ -2,11 +2,12 @@ import SwiftUI
 
 @main
 struct PrayerTeamApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var auth = AuthStore()
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            RootView(appDelegate: appDelegate)
                 .environment(auth)
                 .tint(.sage600)
                 .task { await auth.start() }
@@ -15,6 +16,7 @@ struct PrayerTeamApp: App {
 }
 
 struct RootView: View {
+    let appDelegate: AppDelegate
     @Environment(AuthStore.self) private var auth
 
     var body: some View {
@@ -28,6 +30,7 @@ struct RootView: View {
             LoginView()
         case .signedIn:
             FeedView()
+                .onAppear { PushManager.enable(appDelegate: appDelegate, auth: auth) }
         }
     }
 }

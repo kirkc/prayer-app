@@ -4,9 +4,10 @@ struct FeedView: View {
     @Environment(AuthStore.self) private var auth
     @State private var store: FeedStore?
     @State private var showSettings = false
+    @State private var path = NavigationPath()
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             Group {
                 if let store {
                     feed(store)
@@ -41,6 +42,30 @@ struct FeedView: View {
                 store = s
                 await s.loadInitial()
             }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .pushRequestTapped)) { note in
+            guard let id = note.userInfo?["request_id"] as? String else { return }
+            Task { await openFromPush(id) }
+        }
+    }
+
+    // A push was tapped: make sure the request is in the store (it may have
+    // arrived after the last refresh), then navigate straight to it.
+    private func openFromPush(_ id: String) async {
+        guard let store else { return }
+        if store.current(id) == nil {
+            await store.refresh()
+        }
+        if store.current(id) == nil {
+            // Not in this status list (e.g. already archived) — fetch it and
+            // surface it at the top so the detail view has state to read.
+            if let fetched: PrayerRequest = try? await store.api.get("/api/prayers/\(id)") {
+                store.insertFetched(fetched)
+            }
+        }
+        if let prayer = store.current(id) {
+            path = NavigationPath()
+            path.append(prayer)
         }
     }
 

@@ -54,4 +54,5 @@ struct Me: Codable {
 struct MemberSettings: Codable {
     var notifyNewRequests: Bool
     var notifyFrequency: String   // "immediate" | "daily" | "weekly"
+    var notifyPush: Bool
 }

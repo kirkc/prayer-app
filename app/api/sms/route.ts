@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  const { error } = await supabase
+  const { data: inserted, error } = await supabase
     .from('prayer_requests')
     .insert({
       phone: from,
@@ -95,6 +95,8 @@ export async function POST(req: NextRequest) {
       notify_prayers: true,
       org_id: org.id,
     })
+    .select('id')
+    .single()
 
   // Only acknowledge if we actually saved the request — otherwise the sender
   // would be told "received" for something that was lost.
@@ -106,7 +108,9 @@ export async function POST(req: NextRequest) {
   }
 
   // Alert immediate-cadence team members (never the requester's phone number).
-  after(() => notifyNewRequest({ name: null, request: body.trim(), source: 'sms' }, org))
+  after(() =>
+    notifyNewRequest({ id: inserted?.id, name: null, request: body.trim(), source: 'sms' }, org)
+  )
 
   try {
     await sendSms({
