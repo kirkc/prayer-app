@@ -52,3 +52,4 @@ ios/PrayerTeam.xcodeproj/
 ios/**/xcuserdata/
 ios/**/.build/
 ios/PrayerTeam/Info.plist
+ios/build/
