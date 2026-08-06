@@ -52,7 +52,7 @@ ios/PrayerTeam.xcodeproj/
 ios/**/xcuserdata/
 ios/**/.build/
 ios/PrayerTeam/Info.plist
-ios/build/
+ios/build*/
 
 # APNs auth key — server-side secret, never commit
 *.p8
