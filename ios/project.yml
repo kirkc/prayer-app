@@ -24,7 +24,12 @@ targets:
       path: PrayerTeam/Info.plist
       properties:
         CFBundleDisplayName: Prayer Team
-        UILaunchScreen: {}
+        UILaunchScreen:
+          UIColorName: LaunchBackground
+        UIAppFonts:
+          - Fraunces-300.ttf
+          - Fraunces-400.ttf
+          - Fraunces-500.ttf
         # Debug builds talk to the dev server over http://localhost.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
@@ -35,6 +40,7 @@ targets:
         aps-environment: development
     settings:
       base:
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         PRODUCT_BUNDLE_IDENTIFIER: org.redemptionseattle.prayerteam
         CURRENT_PROJECT_VERSION: 1
         MARKETING_VERSION: 0.1.0

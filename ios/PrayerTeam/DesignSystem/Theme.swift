@@ -37,11 +37,17 @@ extension Color {
 }
 
 extension Font {
-    // Serif display face standing in for the web's Fraunces (New York on
-    // Apple platforms reads beautifully in light weights). Bundling Fraunces
-    // itself is a Phase-10 polish item.
+    // Fraunces (OFL), bundled — the web's display face. Font.custom falls
+    // back to the system face if the font ever fails to register, so this
+    // degrades to New York rather than breaking.
     static func display(_ size: CGFloat, weight: Font.Weight = .light) -> Font {
-        .system(size: size, weight: weight, design: .serif)
+        let name: String
+        switch weight {
+        case .medium: name = "Fraunces-Medium"
+        case .regular: name = "Fraunces-Regular"
+        default: name = "Fraunces-Light"
+        }
+        return .custom(name, size: size)
     }
 }
 
