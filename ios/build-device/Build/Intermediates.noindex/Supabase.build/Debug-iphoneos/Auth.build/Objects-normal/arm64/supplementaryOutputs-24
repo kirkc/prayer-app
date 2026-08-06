@@ -1,0 +1,30 @@
+{
+  "/Users/kirk/Dev/prayer-app/ios/build-device/SourcePackages/checkouts/supabase-swift/Sources/Auth/Internal/CodeVerifierStorage.swift" : {
+    "const-values" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/CodeVerifierStorage.swiftconstvalues",
+    "dependencies" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/CodeVerifierStorage.d",
+    "diagnostics" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/CodeVerifierStorage.dia",
+    "object" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/CodeVerifierStorage.o",
+    "swift-dependencies" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/CodeVerifierStorage.swiftdeps"
+  },
+  "/Users/kirk/Dev/prayer-app/ios/build-device/SourcePackages/checkouts/supabase-swift/Sources/Auth/Internal/Constants.swift" : {
+    "const-values" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/Constants.swiftconstvalues",
+    "dependencies" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/Constants.d",
+    "diagnostics" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/Constants.dia",
+    "object" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/Constants.o",
+    "swift-dependencies" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/Constants.swiftdeps"
+  },
+  "/Users/kirk/Dev/prayer-app/ios/build-device/SourcePackages/checkouts/supabase-swift/Sources/Auth/Internal/Dependencies.swift" : {
+    "const-values" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/Dependencies.swiftconstvalues",
+    "dependencies" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/Dependencies.d",
+    "diagnostics" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/Dependencies.dia",
+    "object" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/Dependencies.o",
+    "swift-dependencies" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/Dependencies.swiftdeps"
+  },
+  "/Users/kirk/Dev/prayer-app/ios/build-device/SourcePackages/checkouts/supabase-swift/Sources/Auth/Internal/EventEmitter.swift" : {
+    "const-values" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/EventEmitter.swiftconstvalues",
+    "dependencies" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/EventEmitter.d",
+    "diagnostics" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/EventEmitter.dia",
+    "object" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/EventEmitter.o",
+    "swift-dependencies" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/EventEmitter.swiftdeps"
+  }
+}

@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>logFormatVersion</key>
+	<integer>12</integer>
+	<key>logs</key>
+	<dict>
+		<key>33007C42-9305-471A-B8A3-7ED8EE7923BF</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>33007C42-9305-471A-B8A3-7ED8EE7923BF.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>E</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>2</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>PrayerTeam project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>PrayerTeam</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project PrayerTeam with scheme PrayerTeam</string>
+			<key>timeStartedRecording</key>
+			<real>807744820.925753</real>
+			<key>timeStoppedRecording</key>
+			<real>807744823.45982206</real>
+			<key>title</key>
+			<string>Building project PrayerTeam with scheme PrayerTeam</string>
+			<key>uniqueIdentifier</key>
+			<string>33007C42-9305-471A-B8A3-7ED8EE7923BF</string>
+		</dict>
+		<key>D24639AA-CFFA-495C-A2AC-EC27E8AB460D</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>D24639AA-CFFA-495C-A2AC-EC27E8AB460D.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>S</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>PrayerTeam project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>PrayerTeam</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project PrayerTeam with scheme PrayerTeam</string>
+			<key>timeStartedRecording</key>
+			<real>807745014.29692197</real>
+			<key>timeStoppedRecording</key>
+			<real>807745124.49961495</real>
+			<key>title</key>
+			<string>Building project PrayerTeam with scheme PrayerTeam</string>
+			<key>uniqueIdentifier</key>
+			<string>D24639AA-CFFA-495C-A2AC-EC27E8AB460D</string>
+		</dict>
+		<key>D621CB0B-94D7-4237-ABAF-34CE1934CAF6</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>D621CB0B-94D7-4237-ABAF-34CE1934CAF6.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>S</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>PrayerTeam project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>PrayerTeam</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project PrayerTeam with scheme PrayerTeam</string>
+			<key>timeStartedRecording</key>
+			<real>807744845.64150906</real>
+			<key>timeStoppedRecording</key>
+			<real>807744963.08190894</real>
+			<key>title</key>
+			<string>Building project PrayerTeam with scheme PrayerTeam</string>
+			<key>uniqueIdentifier</key>
+			<string>D621CB0B-94D7-4237-ABAF-34CE1934CAF6</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

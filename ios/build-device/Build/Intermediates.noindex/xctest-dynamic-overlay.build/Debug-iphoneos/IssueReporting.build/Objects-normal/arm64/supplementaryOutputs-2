@@ -1,0 +1,23 @@
+{
+  "/Users/kirk/Dev/prayer-app/ios/build-device/SourcePackages/checkouts/xctest-dynamic-overlay/Sources/IssueReporting/Internal/FailureObserver.swift" : {
+    "const-values" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/xctest-dynamic-overlay.build/Debug-iphoneos/IssueReporting.build/Objects-normal/arm64/FailureObserver.swiftconstvalues",
+    "dependencies" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/xctest-dynamic-overlay.build/Debug-iphoneos/IssueReporting.build/Objects-normal/arm64/FailureObserver.d",
+    "diagnostics" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/xctest-dynamic-overlay.build/Debug-iphoneos/IssueReporting.build/Objects-normal/arm64/FailureObserver.dia",
+    "object" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/xctest-dynamic-overlay.build/Debug-iphoneos/IssueReporting.build/Objects-normal/arm64/FailureObserver.o",
+    "swift-dependencies" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/xctest-dynamic-overlay.build/Debug-iphoneos/IssueReporting.build/Objects-normal/arm64/FailureObserver.swiftdeps"
+  },
+  "/Users/kirk/Dev/prayer-app/ios/build-device/SourcePackages/checkouts/xctest-dynamic-overlay/Sources/IssueReporting/Internal/LockIsolated.swift" : {
+    "const-values" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/xctest-dynamic-overlay.build/Debug-iphoneos/IssueReporting.build/Objects-normal/arm64/LockIsolated.swiftconstvalues",
+    "dependencies" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/xctest-dynamic-overlay.build/Debug-iphoneos/IssueReporting.build/Objects-normal/arm64/LockIsolated.d",
+    "diagnostics" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/xctest-dynamic-overlay.build/Debug-iphoneos/IssueReporting.build/Objects-normal/arm64/LockIsolated.dia",
+    "object" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/xctest-dynamic-overlay.build/Debug-iphoneos/IssueReporting.build/Objects-normal/arm64/LockIsolated.o",
+    "swift-dependencies" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/xctest-dynamic-overlay.build/Debug-iphoneos/IssueReporting.build/Objects-normal/arm64/LockIsolated.swiftdeps"
+  },
+  "/Users/kirk/Dev/prayer-app/ios/build-device/SourcePackages/checkouts/xctest-dynamic-overlay/Sources/IssueReporting/Internal/Rethrows.swift" : {
+    "const-values" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/xctest-dynamic-overlay.build/Debug-iphoneos/IssueReporting.build/Objects-normal/arm64/Rethrows.swiftconstvalues",
+    "dependencies" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/xctest-dynamic-overlay.build/Debug-iphoneos/IssueReporting.build/Objects-normal/arm64/Rethrows.d",
+    "diagnostics" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/xctest-dynamic-overlay.build/Debug-iphoneos/IssueReporting.build/Objects-normal/arm64/Rethrows.dia",
+    "object" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/xctest-dynamic-overlay.build/Debug-iphoneos/IssueReporting.build/Objects-normal/arm64/Rethrows.o",
+    "swift-dependencies" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/xctest-dynamic-overlay.build/Debug-iphoneos/IssueReporting.build/Objects-normal/arm64/Rethrows.swiftdeps"
+  }
+}

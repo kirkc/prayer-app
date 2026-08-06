@@ -111,3 +111,6 @@ delete from public.prayer_requests where org_id = (select id from public.organiz
 delete from public.message_log where org_id = (select id from public.organizations where slug = 'hillside');
 delete from public.organizations where slug = 'hillside';
 ```
+
+## Neutral Sending Domain
+Neutral sending domain: interpray.app is purchased and parked for this (Aug 2026). Deliberately NOT verified in Resend yet — the free plan allows one domain and Redemption's is using it; until a real second church onboards, orgs without from_email fall back to the Redemption sender and nothing breaks. When church #2 is real, either upgrade Resend (~$20/mo, which also raises send limits) or swap the verified domain to interpray.app and send every church's mail from it — then set NEUTRAL_FROM_EMAIL="Prayer Team <hello@interpray.app>" in Vercel. The domain is also the natural product home later (church onboarding UI, landing page) if this grows beyond two congregations.

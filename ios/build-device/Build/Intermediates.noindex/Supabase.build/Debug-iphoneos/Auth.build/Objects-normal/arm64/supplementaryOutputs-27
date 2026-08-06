@@ -1,0 +1,23 @@
+{
+  "/Users/kirk/Dev/prayer-app/ios/build-device/SourcePackages/checkouts/supabase-swift/Sources/Auth/Internal/SessionManager.swift" : {
+    "const-values" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/SessionManager.swiftconstvalues",
+    "dependencies" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/SessionManager.d",
+    "diagnostics" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/SessionManager.dia",
+    "object" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/SessionManager.o",
+    "swift-dependencies" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/SessionManager.swiftdeps"
+  },
+  "/Users/kirk/Dev/prayer-app/ios/build-device/SourcePackages/checkouts/supabase-swift/Sources/Auth/Internal/SessionStorage.swift" : {
+    "const-values" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/SessionStorage.swiftconstvalues",
+    "dependencies" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/SessionStorage.d",
+    "diagnostics" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/SessionStorage.dia",
+    "object" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/SessionStorage.o",
+    "swift-dependencies" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/SessionStorage.swiftdeps"
+  },
+  "/Users/kirk/Dev/prayer-app/ios/build-device/SourcePackages/checkouts/supabase-swift/Sources/Auth/Internal/URLOpener.swift" : {
+    "const-values" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/URLOpener.swiftconstvalues",
+    "dependencies" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/URLOpener.d",
+    "diagnostics" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/URLOpener.dia",
+    "object" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/URLOpener.o",
+    "swift-dependencies" : "/Users/kirk/Dev/prayer-app/ios/build-device/Build/Intermediates.noindex/Supabase.build/Debug-iphoneos/Auth.build/Objects-normal/arm64/URLOpener.swiftdeps"
+  }
+}
