@@ -24,6 +24,11 @@ targets:
       path: PrayerTeam/Info.plist
       properties:
         CFBundleDisplayName: Prayer Team
+        # Export compliance: the app implements no encryption of its own. It
+        # only uses what iOS provides — TLS through URLSession and the
+        # Keychain for the session — which is exempt. Declaring it here stops
+        # App Store Connect asking on every upload.
+        ITSAppUsesNonExemptEncryption: false
         UILaunchScreen:
           UIColorName: LaunchBackground
         UIAppFonts:
