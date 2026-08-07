@@ -56,11 +56,34 @@ External builds need Beta App Review the first time — usually a day.
 
 - Beta App Description: see below.
 - Feedback email: castro.kirk@gmail.com
-- **Sign-in required — demo account** (a member of an isolated demo
-  congregation with seeded sample data; no real congregation data is
-  visible to reviewers):
+- **Sign-in required — demo account.** A member of the isolated `test-church`
+  org holding only fictional sample requests. Verified against production:
+  signs in, sees Test Church only (never Redemption), and `sms_enabled` is
+  false so the reply-by-text feature is hidden — a reviewer cannot send a
+  message to a real person.
   - Email: `applereview@prayerteam.example`
   - Password: `Grace-qkglxnh8uc`
+
+### App Review notes (paste alongside the credentials)
+
+> This app is the private companion for a church's prayer team. Accounts are
+> created only by a church administrator — there is no public sign-up, so the
+> demo account below is required.
+>
+> The demo account belongs to an isolated demonstration congregation ("Test
+> Church") containing only fictional sample prayer requests. No real
+> congregant data is visible to it. Every church's data is separated at the
+> database level.
+>
+> After signing in you can: browse the prayer request feed, tap Pray to record
+> a prayer, swipe a card to Archive or mark Spam, switch between the Active /
+> Archived / Spam tabs, open a request for detail, and adjust notification
+> preferences via the person icon (top right). Reply-by-text is intentionally
+> unavailable to this demonstration congregation because it has no phone
+> number configured, so no messages can be sent during review.
+
+Keep the demo feed stocked: if `test-church` ever empties out, re-seed a few
+fictional requests (and one archived) so reviewers see a working app.
 
 ### Beta App Description (paste)
 
