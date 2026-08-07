@@ -24,6 +24,12 @@ targets:
       path: PrayerTeam/Info.plist
       properties:
         CFBundleDisplayName: Prayer Team
+        # XcodeGen otherwise hardcodes 1 / 1.0 here, which silently overrides
+        # CURRENT_PROJECT_VERSION and MARKETING_VERSION below — and an upload
+        # that repeats a build number is rejected during processing. Point the
+        # plist at the build settings so bumping one place is enough.
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleShortVersionString: $(MARKETING_VERSION)
         # Export compliance: the app implements no encryption of its own. It
         # only uses what iOS provides — TLS through URLSession and the
         # Keychain for the session — which is exempt. Declaring it here stops
@@ -47,8 +53,8 @@ targets:
       base:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         PRODUCT_BUNDLE_IDENTIFIER: org.redemptionseattle.prayerteam
-        CURRENT_PROJECT_VERSION: 1
-        MARKETING_VERSION: 0.1.0
+        CURRENT_PROJECT_VERSION: 2
+        MARKETING_VERSION: 0.2.0
         SWIFT_VERSION: '5.10'
         TARGETED_DEVICE_FAMILY: '1'
         CODE_SIGN_STYLE: Automatic
