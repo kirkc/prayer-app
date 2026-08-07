@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var prefs: MemberSettings?
     @State private var notice: String?
     @State private var busy = false
+    @State private var loadFailed = false
 
     private let frequencies = [
         ("immediate", "Immediately"),
@@ -57,29 +58,48 @@ struct SettingsView: View {
                 }
             }
         }
-        .task {
-            let client = APIClient(auth: auth)
-            api = client
-            me = try? await client.get("/api/me")
-            prefs = try? await client.get("/api/settings")
+        .task { await load() }
+    }
+
+    // Never leave the identity card blank: a failed load says so and offers a
+    // retry rather than rendering an empty white box forever.
+    private func load() async {
+        let client = api ?? APIClient(auth: auth)
+        api = client
+        loadFailed = false
+        do {
+            me = try await client.get("/api/me")
+            prefs = try await client.get("/api/settings")
+        } catch {
+            loadFailed = true
         }
     }
 
+    @ViewBuilder
     private var identityCard: some View {
         VStack(spacing: 6) {
-            Text(me?.displayName ?? " ")
-                .font(.display(24))
-                .foregroundStyle(Color.ink800)
-            Text(me?.email ?? "")
-                .font(.system(size: 13))
-                .foregroundStyle(Color.ink400)
-            if let org = me?.org {
-                Text(org.name)
+            if let me {
+                Text(me.displayName ?? me.email ?? "Signed in")
+                    .font(.display(24))
+                    .foregroundStyle(Color.ink800)
+                Text(me.email ?? "")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color.ink400)
+                Text(me.org.name)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundStyle(Color.sage600)
                     .padding(.vertical, 4)
                     .padding(.horizontal, 12)
                     .background(Color.sage100, in: Capsule())
+            } else if loadFailed {
+                Text("Couldn't load your account.")
+                    .font(.system(size: 14))
+                    .foregroundStyle(Color.ink400)
+                Button("Try again") { Task { await load() } }
+                    .buttonStyle(SoftButtonStyle())
+                    .padding(.top, 4)
+            } else {
+                ProgressView().tint(Color.sage500)
             }
         }
         .padding(24)

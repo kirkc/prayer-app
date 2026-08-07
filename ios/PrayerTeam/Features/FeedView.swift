@@ -1,5 +1,12 @@
 import SwiftUI
 
+// Where a tap goes. `respond` carries the intent to open the reply sheet on
+// arrival, so the bubble on a card is one tap from a keyboard.
+enum FeedRoute: Hashable {
+    case detail(PrayerRequest)
+    case respond(PrayerRequest)
+}
+
 struct FeedView: View {
     @Environment(AuthStore.self) private var auth
     @State private var store: FeedStore?
@@ -30,9 +37,14 @@ struct FeedView: View {
             .sheet(isPresented: $showSettings) {
                 SettingsView()
             }
-            .navigationDestination(for: PrayerRequest.self) { prayer in
+            .navigationDestination(for: FeedRoute.self) { route in
                 if let store {
-                    RequestDetailView(store: store, requestId: prayer.id)
+                    switch route {
+                    case .detail(let prayer):
+                        RequestDetailView(store: store, requestId: prayer.id)
+                    case .respond(let prayer):
+                        RequestDetailView(store: store, requestId: prayer.id, autoRespond: true)
+                    }
                 }
             }
         }
@@ -65,7 +77,7 @@ struct FeedView: View {
         }
         if let prayer = store.current(id) {
             path = NavigationPath()
-            path.append(prayer)
+            path.append(FeedRoute.detail(prayer))
         }
     }
 
@@ -105,10 +117,13 @@ struct FeedView: View {
             } else {
                 ForEach(Array(store.items.enumerated()), id: \.element.id) { index, prayer in
                     ZStack {
-                        NavigationLink(value: prayer) { EmptyView() }.opacity(0)
-                        PrayerCardView(prayer: prayer) {
-                            Task { await store.togglePray(prayer) }
-                        }
+                        NavigationLink(value: FeedRoute.detail(prayer)) { EmptyView() }.opacity(0)
+                        PrayerCardView(
+                            prayer: prayer,
+                            canReply: prayer.hasPhone && store.smsEnabled,
+                            onPray: { Task { await store.togglePray(prayer) } },
+                            onRespond: { path.append(FeedRoute.respond(prayer)) }
+                        )
                     }
                     .riseIn(delay: min(Double(index) * 0.06, 0.4))
                     .listRowSeparator(.hidden)

@@ -10,10 +10,6 @@ struct LoginView: View {
             Spacer()
 
             VStack(spacing: 8) {
-                Text("WELCOME BACK")
-                    .font(.system(size: 11, weight: .medium))
-                    .tracking(3)
-                    .foregroundStyle(Color.sage500)
                 Text("Prayer Team")
                     .font(.display(34))
                     .foregroundStyle(Color.ink800)
@@ -30,28 +26,44 @@ struct LoginView: View {
                     Text("Email")
                         .font(.system(size: 13))
                         .foregroundStyle(Color.ink600)
-                    TextField("you@example.com", text: $email)
-                        .textFieldStyle(.plain)
-                        .keyboardType(.emailAddress)
-                        .textContentType(.username)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 14)
-                        .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
-                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.mist300, lineWidth: 1))
+                    // Placeholder drawn by hand rather than via the field's
+                    // own prompt: the system styles that with the accent
+                    // color (it was rendering blue), and the typed text
+                    // needs an explicit color too or it inherits white.
+                    ZStack(alignment: .leading) {
+                        if email.isEmpty {
+                            Text("you@example.com")
+                                .font(.system(size: 15))
+                                .foregroundStyle(Color.ink300)
+                        }
+                        TextField("", text: $email)
+                            .font(.system(size: 15))
+                            .foregroundStyle(Color.ink800)
+                            .textFieldStyle(.plain)
+                            .keyboardType(.emailAddress)
+                            .textContentType(.username)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                    }
+                    .fieldBox()
                 }
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Password")
                         .font(.system(size: 13))
                         .foregroundStyle(Color.ink600)
-                    SecureField("••••••••", text: $password)
-                        .textFieldStyle(.plain)
-                        .textContentType(.password)
-                        .padding(.vertical, 10)
-                        .padding(.horizontal, 14)
-                        .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
-                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.mist300, lineWidth: 1))
+                    ZStack(alignment: .leading) {
+                        if password.isEmpty {
+                            Text("••••••••")
+                                .font(.system(size: 15))
+                                .foregroundStyle(Color.ink300)
+                        }
+                        SecureField("", text: $password)
+                            .font(.system(size: 15))
+                            .foregroundStyle(Color.ink800)
+                            .textFieldStyle(.plain)
+                            .textContentType(.password)
+                    }
+                    .fieldBox()
                 }
 
                 if let error = auth.signInError {

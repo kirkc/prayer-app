@@ -5,6 +5,9 @@ import SwiftUI
 struct RequestDetailView: View {
     let store: FeedStore
     let requestId: String
+    // Set when arriving from a card's reply bubble: open the sheet straight
+    // away so the member lands on a keyboard, not another button.
+    var autoRespond: Bool = false
 
     @Environment(\.dismiss) private var dismiss
     @State private var showRespond = false
@@ -27,6 +30,13 @@ struct RequestDetailView: View {
             }
         }
         .background(Color.mist50.ignoresSafeArea())
+        .task {
+            guard autoRespond else { return }
+            // Let the push animation settle before presenting, or the sheet
+            // fights the navigation transition.
+            try? await Task.sleep(for: .milliseconds(350))
+            showRespond = true
+        }
     }
 
     @ViewBuilder
@@ -75,21 +85,26 @@ struct RequestDetailView: View {
                 Button {
                     Task { await store.togglePray(prayer) }
                 } label: {
-                    Label(
-                        prayer.youPrayed ? "Prayed" : "Pray for this",
-                        systemImage: prayer.youPrayed ? "heart.fill" : "heart"
-                    )
+                    HStack(spacing: 8) {
+                        Image(systemName: prayer.youPrayed ? "heart.fill" : "heart")
+                        Text(prayer.youPrayed ? "Prayed" : "Pray for this")
+                    }
+                    .lineLimit(1)
                     .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(prayer.youPrayed ? AnyButtonStyle(SoftButtonStyle(active: true))
+                .buttonStyle(prayer.youPrayed ? AnyButtonStyle(SoftButtonStyle())
                                               : AnyButtonStyle(PrimaryButtonStyle()))
 
                 if prayer.hasPhone && store.smsEnabled {
                     Button {
                         showRespond = true
                     } label: {
-                        Label("Respond by text", systemImage: "bubble.left")
-                            .frame(maxWidth: .infinity)
+                        HStack(spacing: 8) {
+                            Image(systemName: "bubble.left")
+                            Text("Respond by text")
+                        }
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(AnyButtonStyle(SoftButtonStyle()))
                 }
@@ -152,6 +167,7 @@ struct RespondSheet: View {
     @State private var message = ""
     @State private var sending = false
     @State private var errorMessage: String?
+    @FocusState private var editorFocused: Bool
 
     private let limit = 1000
 
@@ -166,6 +182,7 @@ struct RespondSheet: View {
                     .font(.system(size: 15))
                     .foregroundStyle(Color.ink700)
                     .scrollContentBackground(.hidden)
+                    .focused($editorFocused)
                     .padding(12)
                     .frame(minHeight: 160)
                     .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
@@ -205,7 +222,12 @@ struct RespondSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.large])
+        .task {
+            // The sheet needs a beat on screen before it will take focus.
+            try? await Task.sleep(for: .milliseconds(250))
+            editorFocused = true
+        }
     }
 
     private func send() async {

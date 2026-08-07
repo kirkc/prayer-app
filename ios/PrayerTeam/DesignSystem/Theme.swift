@@ -85,8 +85,20 @@ struct RiseIn: ViewModifier {
     }
 }
 
+// The web's .input: white, 16pt radius, hairline mist border.
+struct FieldBox: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .padding(.vertical, 12)
+            .padding(.horizontal, 14)
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.mist300, lineWidth: 1))
+    }
+}
+
 extension View {
     func card() -> some View { modifier(CardModifier()) }
+    func fieldBox() -> some View { modifier(FieldBox()) }
     func riseIn(delay: Double = 0) -> some View { modifier(RiseIn(delay: delay)) }
 }
 
@@ -104,16 +116,19 @@ struct PrimaryButtonStyle: ButtonStyle {
     }
 }
 
+// `filled` is the call-to-action state: solid sage, white text. The pale
+// variant reads as "already done" — so an un-prayed request shows the filled
+// button (do this) and a prayed one goes quiet.
 struct SoftButtonStyle: ButtonStyle {
-    var active = false
+    var filled = false
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 14, weight: .medium))
-            .foregroundStyle(active ? Color.white : Color.sage700)
+            .foregroundStyle(filled ? Color.white : Color.sage700)
             .padding(.vertical, 8)
             .padding(.horizontal, 16)
-            .background(active ? Color.sage600 : Color.sage100, in: Capsule())
+            .background(filled ? Color.sage600 : Color.sage100, in: Capsule())
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
             .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }
