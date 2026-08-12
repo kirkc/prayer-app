@@ -55,7 +55,7 @@ tap the link, and sign in with their normal prayer-team account.
 External builds need Beta App Review the first time — usually a day.
 
 - Beta App Description: see below.
-- Feedback email: castro.kirk@gmail.com
+- Feedback email: interprayapp@gmail.com
 - **Sign-in required — demo account.** A member of the isolated `test-church`
   org holding only fictional sample requests. Verified against production:
   signs in, sees Test Church only (never Redemption), and `sms_enabled` is
@@ -103,15 +103,123 @@ Data collected, all **linked to identity**, none used for tracking:
 | Email address | App functionality | Sign-in identity |
 | Name | App functionality | Display name in the roster |
 | Other user content | App functionality | Prayer requests + replies the team works with |
+| Device ID | App functionality | APNs push token, registered by `POST /api/devices` |
 
 Everything else: not collected. No third-party analytics or ads SDKs in
 the app. (Requester phone numbers never reach the app — the server only
-exposes whether a number exists.)
+exposes whether a number exists. Vercel Analytics runs on the website
+only, never in the app, so it isn't declared here.)
 
-## Version cadence
+---
 
-TestFlight builds expire after 90 days — re-upload before then. The
-long-term plan is **unlisted App Store distribution** (Apple's channel
-for limited-audience apps: a real App Store listing reachable only by
-link), which removes the expiry treadmill. Apply via App Store Connect →
-App Distribution once the app has been stable on TestFlight for a while.
+# Releasing to the App Store (unlisted)
+
+TestFlight builds expire after 90 days. **Unlisted App Distribution** is
+Apple's channel for limited-audience apps — a real App Store listing
+reachable only by a direct link, never by search — which is the right
+shape for an invite-only prayer team and ends the re-upload treadmill.
+
+The app still goes through full App Review. Apple declines the unlisted
+request if the app hasn't been submitted for review yet, or if it's
+sitting in beta, so the order below matters.
+
+## 1. Listing fields (App Store Connect)
+
+| Field | Value |
+|---|---|
+| Support URL | `https://prayer.redemptionseattle.org/support` |
+| Privacy Policy URL | `https://prayer.redemptionseattle.org/legal/privacy` |
+| App Review contact email | `interprayapp@gmail.com` |
+| Category | Lifestyle |
+| Price | Free |
+
+Both URLs only resolve after the web app is deployed — deploy before
+submitting, or review fails on a dead link.
+
+## 2. Screenshots
+
+Five 6.9" images live in `ios/screenshots/` (1320×2868, opaque — App
+Store Connect rejects any alpha channel). 6.9" is the only required size;
+supplying it means 6.5" isn't needed.
+
+To regenerate, sign in to the simulator as the demo account so no real
+congregant data is ever in a store asset:
+
+```bash
+xcrun simctl boot 'iPhone 17 Pro Max'
+cd ios/screenshots && xcrun simctl io booted screenshot --type=png 01-feed.png
+swift flatten.swift *.png   # strips the alpha simctl always writes
+```
+
+## 3. Age rating
+
+Answer the user-generated-content question **yes** — prayer requests are
+written by congregants. Expect the questionnaire to land at 13+ rather
+than 4+. Don't try to talk it down; a rating that doesn't match the
+content is its own rejection.
+
+## 4. Review notes
+
+Paste the App Review notes above, then add these three paragraphs.
+
+> **Unlisted distribution.** This app is intended for unlisted
+> distribution. It serves the prayer team of a specific church, not the
+> general public, and a request for unlisted distribution has been
+> submitted separately.
+
+> **Guideline 1.2 (user-generated content).** Prayer requests are written
+> by members of a congregation and flow in one direction — from an
+> anonymous requester, through a church's public request form, to that
+> church's closed prayer team. App users cannot post content to one
+> another, cannot see one another's submissions, and cannot be contacted
+> by other users. Team accounts are created only by a church
+> administrator, so every person who can see a request has been vetted by
+> that church. The team can archive, mark as spam, or delete any request
+> from inside the app, and objectionable content can be reported to
+> interprayapp@gmail.com, published on our support page, which we answer
+> within one business day.
+
+> **Guideline 5.1.1(v) (account deletion).** The app offers no account
+> creation — accounts exist only when a church administrator creates one.
+> Even so, Settings → Delete my account permanently deletes the signed-in
+> member's account and personal data immediately, with no support contact
+> required.
+
+## 5. Submit, then request unlisted
+
+1. Submit the build for App Review with the notes above.
+2. File the unlisted request at
+   [developer.apple.com/contact/request/unlisted-app](https://developer.apple.com/contact/request/unlisted-app/).
+   The app's Apple ID is **6798854175**.
+3. On approval, Pricing and Availability switches to "Unlisted App" on
+   its own and Apple generates the shareable link.
+
+## Before any upload
+
+- Bump `CURRENT_PROJECT_VERSION` in `project.yml` — a repeated build
+  number is rejected during processing.
+- Set the `APNS_*` variables in Vercel (see `.env.example`). Without
+  them `apnsConfigured()` returns false and production pushes silently
+  no-op; email still goes out, so it looks like push "just doesn't work".
+- Keep the demo feed stocked: if `test-church` ever empties out, re-seed
+  a few fictional requests (and one archived) so reviewers see a working
+  app.
+- **Confirm push works on the first TestFlight install.** Install the
+  build, then tap **Settings → Send a test notification**. It reports
+  each channel separately, so read the line under the button:
+
+  | It says | It means |
+  |---|---|
+  | `push sent to 1 device` | The production gateway works. Done. |
+  | `push failed for 1 of 1` | APNs rejected the token — almost certainly the entitlement (below). |
+  | `this device isn't registered yet` | The token never reached the server; check notification permission. |
+  | `push isn't set up on the server` | `APNS_*` missing from the Vercel environment. |
+
+  Why this matters: the entitlement pins `aps-environment: development`
+  and relies on the export step re-signing it to production, while the
+  app reports `"production"` for release builds. Every push that has ever
+  worked went over the **sandbox** gateway from a development-signed
+  build — the production pairing is untested, and it fails silently
+  (a rejected token is deleted as dead with nothing logged). If the test
+  reports a failure, split the entitlements per configuration in
+  `project.yml`: development for Debug, production for Release.

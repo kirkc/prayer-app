@@ -55,5 +55,6 @@ PrayerTeam/
   Features/              Login, Feed (+ store, card), Settings
 ```
 
-Still to come (plan phases 8–10): triage + respond + notification prefs,
-push notifications, TestFlight distribution, bundled Fraunces display font.
+Triage, respond, notification preferences, push notifications, the bundled
+Fraunces display font, and TestFlight distribution are all done. See
+`RELEASE.md` for building, uploading, and the App Store submission checklist.

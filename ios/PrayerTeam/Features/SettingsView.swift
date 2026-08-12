@@ -12,6 +12,16 @@ struct SettingsView: View {
     @State private var notice: String?
     @State private var busy = false
     @State private var loadFailed = false
+    @State private var confirmingDelete = false
+    @State private var deleting = false
+    @State private var testing = false
+    // Kept separate from `notice`, which renders at the very bottom of the
+    // sheet — below the fold on this screen. A message you can't see is worse
+    // than none, so these sit under the buttons that produced them. The delete
+    // refusal especially: "you are the only administrator" is the whole reason
+    // nothing happened.
+    @State private var testNotice: String?
+    @State private var deleteNotice: String?
 
     private let frequencies = [
         ("immediate", "Immediately"),
@@ -30,6 +40,8 @@ struct SettingsView: View {
                     }
 
                     accountCard
+
+                    aboutCard
 
                     Button("Sign out") {
                         Task {
@@ -165,6 +177,23 @@ struct SettingsView: View {
                 .padding(4)
                 .background(Color.mist100, in: Capsule())
             }
+
+            Divider().overlay(Color.mist100)
+
+            // The only way to prove the push pipeline works without waiting on
+            // a real request — which is how you check a fresh TestFlight build.
+            VStack(alignment: .leading, spacing: 6) {
+                Button(testing ? "Sending…" : "Send a test notification") {
+                    Task { await sendTest() }
+                }
+                .buttonStyle(SoftButtonStyle())
+                .disabled(testing)
+                Text(testNotice ?? "Sends one email and one push to your own devices.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(testNotice == nil ? Color.ink300 : Color.sage600)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .transition(.opacity)
+            }
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -184,7 +213,59 @@ struct SettingsView: View {
             }
             .buttonStyle(SoftButtonStyle())
             .disabled(busy)
+
+            Divider().overlay(Color.mist100)
+
+            Button(deleting ? "Deleting…" : "Delete my account") {
+                confirmingDelete = true
+            }
+            .buttonStyle(SoftButtonStyle(destructive: true))
+            .disabled(deleting)
+
+            if let deleteNotice {
+                Text(deleteNotice)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.clay600)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .transition(.opacity)
+            }
         }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .card()
+        .confirmationDialog(
+            "Delete your account?",
+            isPresented: $confirmingDelete,
+            titleVisibility: .visible
+        ) {
+            Button("Delete my account", role: .destructive) {
+                Task { await deleteAccount() }
+            }
+            Button("Keep my account", role: .cancel) {}
+        } message: {
+            Text("This permanently removes your name, email, notification preferences, and the record of what you've prayed for. You'll lose access to your church's requests. It can't be undone.")
+        }
+    }
+
+    // App Review looks for these, and a member who wants to know what's stored
+    // shouldn't have to go find the website on their own.
+    private var aboutCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("About")
+                .font(.display(18))
+                .foregroundStyle(Color.ink800)
+
+            Link("Privacy Policy", destination: Config.privacyURL)
+            Link("Terms of Service", destination: Config.termsURL)
+            Link("Support", destination: Config.supportURL)
+
+            Text("Version \(Config.versionLabel)")
+                .font(.system(size: 12))
+                .foregroundStyle(Color.ink300)
+                .padding(.top, 4)
+        }
+        .font(.system(size: 14))
+        .foregroundStyle(Color.sage600)
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .card()
@@ -216,6 +297,26 @@ struct SettingsView: View {
         }
     }
 
+    // Held longer than the usual flash: this one is a diagnostic you read, not
+    // a "Saved" you glance at.
+    private func sendTest() async {
+        guard let api else { return }
+        testing = true
+        defer { testing = false }
+        let message: String
+        do {
+            let result: TestNotificationResult = try await api.post("/api/settings/test")
+            message = result.summary
+        } catch {
+            message = (error as? APIError)?.message ?? "Could not send the test notification."
+        }
+        withAnimation(.easeOut(duration: 0.3)) { testNotice = message }
+        Task {
+            try? await Task.sleep(for: .seconds(10))
+            withAnimation(.easeOut(duration: 0.3)) { testNotice = nil }
+        }
+    }
+
     private func resetPassword() async {
         guard let api else { return }
         busy = true
@@ -225,6 +326,24 @@ struct SettingsView: View {
             flash("Reset link sent — check your email")
         } catch {
             flash("Could not send the reset email")
+        }
+    }
+
+    // The server does the work and the guarding (a church's last admin can't
+    // leave it stranded); the app just relays whatever it says.
+    private func deleteAccount() async {
+        guard let api else { return }
+        deleting = true
+        withAnimation(.easeOut(duration: 0.3)) { deleteNotice = nil }
+        do {
+            let _: SimpleSuccess = try await api.delete("/api/me")
+            await auth.signOut()
+            dismiss()
+        } catch {
+            deleting = false
+            let message = (error as? APIError)?.message ?? "Could not delete your account."
+            // No auto-dismiss: the refusal tells you what to do next.
+            withAnimation(.easeOut(duration: 0.3)) { deleteNotice = message }
         }
     }
 

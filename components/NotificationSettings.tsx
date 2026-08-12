@@ -14,6 +14,11 @@ type Props = {
   initialFrequency: NotifyFrequency
 }
 
+type TestResult = {
+  email: boolean
+  push: { configured: boolean; devices: number; sent: number; failed: number }
+}
+
 export default function NotificationSettings({ initialEnabled, initialFrequency }: Props) {
   const [enabled, setEnabled] = useState(initialEnabled)
   const [frequency, setFrequency] = useState<NotifyFrequency>(initialFrequency)
@@ -61,16 +66,27 @@ export default function NotificationSettings({ initialEnabled, initialFrequency 
     if (!ok) setFrequency(prev)
   }
 
+  // Spell out the push half rather than saying "sent" — "0 devices" and "no
+  // APNs key on the server" both look like silence from the phone, and this
+  // button exists precisely to tell them apart.
+  function describe(result: TestResult): string {
+    const parts = [result.email ? 'Email sent' : 'Email failed']
+    const { configured, devices, sent, failed } = result.push
+    if (!configured) parts.push('push isn’t configured on the server')
+    else if (devices === 0) parts.push('no devices registered for push')
+    else if (failed > 0) parts.push(`push failed for ${failed} of ${devices} device${devices === 1 ? '' : 's'}`)
+    else parts.push(`push sent to ${sent} device${sent === 1 ? '' : 's'}`)
+    return parts.join(' · ')
+  }
+
   async function sendTest() {
     setBusy(true)
     setError('')
     const res = await fetch('/api/settings/test', { method: 'POST' })
     setBusy(false)
-    if (res.ok) flash('Test email sent')
-    else {
-      const data = await res.json().catch(() => ({}))
-      setError(data.error ?? 'Could not send the test email.')
-    }
+    const data = await res.json().catch(() => ({}))
+    if (res.ok) flash(describe(data as TestResult))
+    else setError(data.error ?? 'Could not send the test notification.')
   }
 
   return (
@@ -123,19 +139,20 @@ export default function NotificationSettings({ initialEnabled, initialFrequency 
         ))}
       </div>
 
-      {/* Channel (email-only for now) */}
+      {/* Channels */}
       <p className="text-xs text-ink-300 border-t border-mist-100 pt-4">
-        Notifications are sent by email. Text-message alerts are coming later.
+        Notifications are sent by email, and as a push notification to the
+        iPhone app if you use it. Text-message alerts are coming later.
       </p>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 flex-wrap">
         <button
           type="button"
           onClick={sendTest}
           disabled={busy}
           className="btn btn-soft text-sm px-4 py-2 disabled:opacity-50"
         >
-          Send a test email
+          Send a test notification
         </button>
         {notice && <span className="text-sm text-sage-600 animate-breathe">{notice}</span>}
         {error && <span className="text-sm text-red-500/80 animate-breathe">{error}</span>}

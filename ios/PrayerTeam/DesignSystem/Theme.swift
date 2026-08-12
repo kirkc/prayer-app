@@ -28,6 +28,11 @@ extension Color {
     static let mist200 = Color(hex: 0xE0E8E8)
     static let mist300 = Color(hex: 0xC9D6D6)
 
+    // Destructive actions. A muted clay rather than system red — it has to
+    // read as "careful" without shouting across a calm palette.
+    static let clay100 = Color(hex: 0xF3E7E4)
+    static let clay600 = Color(hex: 0x9C5F52)
+
     static let ink300 = Color(hex: 0xA3B1B5)
     static let ink400 = Color(hex: 0x81959B)
     static let ink500 = Color(hex: 0x64787F)
@@ -121,14 +126,27 @@ struct PrimaryButtonStyle: ButtonStyle {
 // button (do this) and a prayed one goes quiet.
 struct SoftButtonStyle: ButtonStyle {
     var filled = false
+    // Same soft capsule, clay instead of sage. The style sets its own
+    // foreground, so an outer .foregroundStyle can't recolor it from outside.
+    var destructive = false
+
+    private var foreground: Color {
+        if filled { return .white }
+        return destructive ? .clay600 : .sage700
+    }
+
+    private var background: Color {
+        if filled { return .sage600 }
+        return destructive ? .clay100 : .sage100
+    }
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 14, weight: .medium))
-            .foregroundStyle(filled ? Color.white : Color.sage700)
+            .foregroundStyle(foreground)
             .padding(.vertical, 8)
             .padding(.horizontal, 16)
-            .background(filled ? Color.sage600 : Color.sage100, in: Capsule())
+            .background(background, in: Capsule())
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
             .animation(.easeOut(duration: 0.15), value: configuration.isPressed)
     }

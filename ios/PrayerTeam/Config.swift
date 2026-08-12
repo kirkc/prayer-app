@@ -19,4 +19,20 @@ enum Config {
     #else
     static let apiBase = URL(string: "https://prayer.redemptionseattle.org")!
     #endif
+
+    // Where the Settings screen sends people for policy and help. Always the
+    // real site, even in debug — these open in Safari, which can't reach the
+    // Mac's localhost, and App Review follows them.
+    static let webBase = URL(string: "https://prayer.redemptionseattle.org")!
+    static let privacyURL = webBase.appending(path: "legal/privacy")
+    static let termsURL = webBase.appending(path: "legal/terms")
+    static let supportURL = webBase.appending(path: "support")
+
+    // Marketing version + build, e.g. "0.3.0 (3)".
+    static var versionLabel: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "—"
+        let build = info?["CFBundleVersion"] as? String ?? "—"
+        return "\(version) (\(build))"
+    }
 }
