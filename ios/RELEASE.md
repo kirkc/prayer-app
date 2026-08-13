@@ -30,12 +30,30 @@ Device Management → trust your developer certificate).
 ```bash
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 xcodegen
+rm -rf build/PrayerTeam.xcarchive
 xcodebuild -project PrayerTeam.xcodeproj -scheme PrayerTeam \
   -destination 'generic/platform=iOS' -archivePath build/PrayerTeam.xcarchive \
   -allowProvisioningUpdates archive
 xcodebuild -exportArchive -archivePath build/PrayerTeam.xcarchive \
   -exportOptionsPlist ExportOptions.plist -exportPath build/export \
   -allowProvisioningUpdates
+```
+
+**Do not skip the `rm -rf`.** Archiving over an existing `.xcarchive`
+replaces `Products/` but leaves the archive's own `Info.plist` alone, so
+`ApplicationProperties` keeps the *previous* version and build. The export
+step reads that stale metadata, not the app's. On 12 Aug this shipped an
+0.3.0 (3) binary to App Store Connect labelled **0.2.0 (3)** — the version
+appeared to go backwards, and the build looked like it was missing its new
+features when it wasn't. `manageAppVersionAndBuildNumber` is now `false` in
+`ExportOptions.plist` so a mismatch fails the upload instead of being
+quietly renumbered.
+
+Sanity check before uploading — this must match `project.yml`:
+
+```bash
+/usr/libexec/PlistBuddy -c "Print :ApplicationProperties:CFBundleShortVersionString" build/PrayerTeam.xcarchive/Info.plist
+/usr/libexec/PlistBuddy -c "Print :ApplicationProperties:CFBundleVersion" build/PrayerTeam.xcarchive/Info.plist
 ```
 
 `ExportOptions.plist` (in this directory) uploads straight to App Store

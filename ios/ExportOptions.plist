@@ -10,5 +10,12 @@
 	<string>PZMJ856J43</string>
 	<key>uploadSymbols</key>
 	<true/>
+	<!-- Defaults to true, which lets Xcode silently rewrite the version and
+	     build number to whatever avoids a duplicate. That turned an 0.3.0 (3)
+	     archive into an upload labelled "0.2.0 (3)" and made it look like the
+	     version had gone backwards. Off: a stale or duplicate archive now
+	     fails loudly instead of shipping under a number nobody chose. -->
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
 </dict>
 </plist>
