@@ -233,11 +233,13 @@ Paste the App Review notes above, then add these three paragraphs.
   | `this device isn't registered yet` | The token never reached the server; check notification permission. |
   | `push isn't set up on the server` | `APNS_*` missing from the Vercel environment. |
 
-  Why this matters: the entitlement pins `aps-environment: development`
-  and relies on the export step re-signing it to production, while the
-  app reports `"production"` for release builds. Every push that has ever
-  worked went over the **sandbox** gateway from a development-signed
-  build — the production pairing is untested, and it fails silently
-  (a rejected token is deleted as dead with nothing logged). If the test
-  reports a failure, split the entitlements per configuration in
-  `project.yml`: development for Debug, production for Release.
+  **Confirmed working on 0.3.0 (4), 12 Aug 2026.** The entitlement pins
+  `aps-environment: development` and relies on the export step re-signing
+  it to production, while the app reports `"production"` for release
+  builds. That pairing was unproven until build 4 — every push before it
+  had gone over the *sandbox* gateway from a development-signed build —
+  and it fails silently, since a rejected token is deleted as dead with
+  nothing logged. It works, so leave the entitlement alone. Re-run this
+  check after any change to signing, the entitlement, or the export
+  options; if it ever fails, split the entitlements per configuration in
+  `project.yml` (development for Debug, production for Release).
