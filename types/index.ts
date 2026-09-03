@@ -23,11 +23,28 @@ export type PrayerRequest = {
   prayed_count: number
   created_at: string
   has_phone: boolean
+  // Text replies (not reactions) the requester has sent back — see
+  // inbound_messages (migration 017).
+  reply_count: number
 }
 
 // A prayer request plus per-viewer state for the current signed-in user.
 export type PrayerRequestWithState = PrayerRequest & {
   you_prayed: boolean
+}
+
+// One line of a request's text conversation, as GET /api/prayers/[id]/thread
+// returns it: outbound team replies and the requester's inbound texts,
+// merged by time. Reactions carry the raw tapback text ("Loved "…""); the
+// client renders them as a heart.
+export type ThreadMessage = {
+  id: string
+  direction: 'out' | 'in'
+  kind: 'reply' | 'reaction'
+  body: string
+  at: string
+  // Display name of the team member who sent an outbound reply.
+  author: string | null
 }
 
 export type PrayerResponse = {

@@ -12,6 +12,12 @@ dashboard, marks that they **prayed**, and can **respond** with a warm text repl
 4. A team member taps **Pray** — recorded once per person, with a visible count.
 5. A team member can **Respond**, which sends an SMS back, logs the reply,
    marks the request replied, and counts as a prayer.
+6. When the requester texts back — a tapback like `Loved "…"`, or a short
+   "thank you" within 4 days of a text from us — it's filed on their request
+   as a thread, not logged as a new request. A written reply pushes the team
+   member whose text it answers. See `lib/sms-inbound.ts`; a wrong guess is
+   fixed with **Move to thread** on a request or **Make this a request** in
+   the thread.
 
 ## Tech stack
 

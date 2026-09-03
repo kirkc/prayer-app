@@ -150,6 +150,47 @@ export async function notifyNewRequest(
   )
 }
 
+export type ReplySummary = {
+  requestId: string
+  requesterName: string | null
+  body: string
+  // The team member whose text is being answered. Only they get the tap.
+  profileId: string
+}
+
+// A requester texted back to a team member's reply. Push that one member and
+// nobody else — a "thank you" is for the person who wrote to them, and the
+// whole team already heard about the request itself. Never throws.
+export async function notifyReply(summary: ReplySummary, org: Org): Promise<void> {
+  try {
+    const service = createServiceClient()
+    const { data: rows, error } = await service
+      .from('device_tokens')
+      .select('token, environment, profiles!inner(notify_push)')
+      .eq('profile_id', summary.profileId)
+      .eq('profiles.notify_push', true)
+    if (error) {
+      await logError('push.reply_recipients_query', error, { profile_id: summary.profileId })
+      return
+    }
+    if (!rows || rows.length === 0) return
+
+    const who = summary.requesterName?.trim() || 'Anonymous'
+    await sendPushes(
+      rows.map(r => ({
+        token: r.token as string,
+        environment: r.environment as 'sandbox' | 'production',
+        title: `Reply from ${who}`,
+        body: truncate(summary.body.trim(), 120),
+        data: { request_id: summary.requestId },
+        threadId: org.slug,
+      }))
+    )
+  } catch (err) {
+    await logError('push.reply_fanout', err, { request_id: summary.requestId })
+  }
+}
+
 // Digest / periodic summary for one recipient. Called by the cron route with a
 // window of requests already gathered for that user's cadence.
 export async function sendDigestEmail(

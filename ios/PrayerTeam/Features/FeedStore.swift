@@ -128,6 +128,22 @@ final class FeedStore {
         items[i].prayedCount = result.prayedCount
     }
 
+    // This "request" was really a text back to us. The server files it on the
+    // number's earlier request; on success it leaves this list. Returns a
+    // message to show when it can't (e.g. no earlier request to attach to).
+    func moveToThread(_ request: PrayerRequest) async -> String? {
+        do {
+            let _: ReclassifyResult = try await api.post(
+                "/api/prayers/\(request.id)/reclassify",
+                body: ["to": "thread"]
+            )
+            items.removeAll { $0.id == request.id }
+            return nil
+        } catch {
+            return (error as? APIError)?.message ?? "Could not move the request."
+        }
+    }
+
     func current(_ id: String) -> PrayerRequest? {
         items.first(where: { $0.id == id })
     }
