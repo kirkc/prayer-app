@@ -6,7 +6,7 @@ import type { PrayerRequest, PrayerRequestWithState } from '@/types'
 // `has_phone` (migration 011) exposes only its presence so the UI knows a
 // text reply is possible.
 export const PRAYER_COLUMNS =
-  'id, name, request, source, status, replied, prayed_count, created_at, has_phone'
+  'id, name, request, source, status, replied, prayed_count, created_at, has_phone, reply_count'
 
 type Status = PrayerRequest['status']
 type FeedFilters = { status?: Status; search?: string }

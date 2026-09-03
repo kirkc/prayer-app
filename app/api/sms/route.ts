@@ -1,10 +1,84 @@
 import { NextRequest, NextResponse, after } from 'next/server'
 import { createServiceClient } from '@/lib/supabase-server'
 import { sendSms } from '@/lib/twilio'
-import { notifyNewRequest } from '@/lib/notifications'
-import { getOrgByTwilioPhone } from '@/lib/orgs'
+import { notifyNewRequest, notifyReply } from '@/lib/notifications'
+import { getOrgByTwilioPhone, type Org } from '@/lib/orgs'
 import { logError } from '@/lib/log'
+import {
+  classifyInbound,
+  findRecentOutbound,
+  resolveReplyTarget,
+  REPLY_WINDOW_HOURS,
+} from '@/lib/sms-inbound'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import twilio from 'twilio'
+
+const EMPTY_TWIML = () =>
+  new NextResponse('<Response></Response>', { headers: { 'Content-Type': 'text/xml' } })
+
+// People react to and answer the texts we send. Neither is a prayer request.
+// A tapback ("Loved "…"") always files on the number's latest request, or
+// is dropped if they have none. A short text files as a reply only if we
+// texted them within the window and they have an active request — otherwise
+// it falls through and becomes a request like before.
+//
+// 'filed'   → saved to the thread; no ack, no team fan-out
+// 'dropped' → a reaction with nowhere to go; save nothing, say nothing
+// 'request' → not a reply after all; continue down the normal path
+async function fileInbound(
+  supabase: SupabaseClient,
+  org: Org,
+  from: string,
+  text: string,
+  kind: 'reaction' | 'candidate_reply',
+  providerId: string | null
+): Promise<'filed' | 'dropped' | 'request'> {
+  const isReaction = kind === 'reaction'
+  const outbound = await findRecentOutbound(supabase, {
+    orgId: org.id,
+    phone: from,
+    withinHours: isReaction ? undefined : REPLY_WINDOW_HOURS,
+  })
+  if (!isReaction && !outbound) return 'request'
+
+  const requestId = await resolveReplyTarget(supabase, {
+    orgId: org.id,
+    phone: from,
+    outbound,
+    activeOnly: !isReaction,
+  })
+  if (!requestId) return isReaction ? 'dropped' : 'request'
+
+  const { error } = await supabase.from('inbound_messages').insert({
+    org_id: org.id,
+    request_id: requestId,
+    phone: from,
+    body: text,
+    kind: isReaction ? 'reaction' : 'reply',
+    provider_id: providerId,
+  })
+  // A duplicate SmsMessageSid is Twilio retrying a delivery we already
+  // recorded — that's filed, not an error.
+  if (error && error.code !== '23505') throw error
+
+  // A written reply reaches the member whose text it answers. Reactions stay
+  // quiet: they show as a heart in the thread, nothing more.
+  if (!isReaction && !error && outbound?.profile_id) {
+    const profileId = outbound.profile_id
+    after(async () => {
+      const { data } = await supabase
+        .from('prayer_requests')
+        .select('name')
+        .eq('id', requestId)
+        .maybeSingle()
+      await notifyReply(
+        { requestId, requesterName: (data?.name as string | null) ?? null, body: text, profileId },
+        org
+      )
+    })
+  }
+  return 'filed'
+}
 
 // POST /api/sms — Twilio webhook for incoming SMS
 export async function POST(req: NextRequest) {
@@ -86,11 +160,28 @@ export async function POST(req: NextRequest) {
     })
   }
 
+  const text = body.trim()
+
+  // Is this an answer to something we sent, rather than a new request? A
+  // failure inside the check must not lose the text: log it and treat the
+  // message as a request, which is what would have happened before.
+  const kind = classifyInbound(text)
+  if (kind !== 'request') {
+    const providerId = params['SmsMessageSid'] ?? params['MessageSid'] ?? null
+    let outcome: 'filed' | 'dropped' | 'request' = 'request'
+    try {
+      outcome = await fileInbound(supabase, org, from, text, kind, providerId)
+    } catch (err) {
+      await logError('sms.file_inbound', err, { from, kind })
+    }
+    if (outcome !== 'request') return EMPTY_TWIML()
+  }
+
   const { data: inserted, error } = await supabase
     .from('prayer_requests')
     .insert({
       phone: from,
-      request: body.trim(),
+      request: text,
       source: 'sms',
       notify_prayers: true,
       org_id: org.id,
@@ -109,7 +200,7 @@ export async function POST(req: NextRequest) {
 
   // Alert immediate-cadence team members (never the requester's phone number).
   after(() =>
-    notifyNewRequest({ id: inserted?.id, name: null, request: body.trim(), source: 'sms' }, org)
+    notifyNewRequest({ id: inserted?.id, name: null, request: text, source: 'sms' }, org)
   )
 
   try {
@@ -119,6 +210,8 @@ export async function POST(req: NextRequest) {
       kind: 'sms.ack',
       from: org.twilio_phone,
       orgId: org.id,
+      // Lets a reaction to the ack itself find its way back to this request.
+      meta: inserted?.id ? { request_id: inserted.id } : undefined,
     })
   } catch (err) {
     await logError('sms.ack', err, { from })

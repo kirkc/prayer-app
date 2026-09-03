@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { PrayerRequestWithState } from '@/types'
+import { PrayerRequestWithState, ThreadMessage } from '@/types'
+import { reactionGlyph } from '@/lib/sms-inbound'
 
 type Props = {
   prayer: PrayerRequestWithState
@@ -9,6 +10,18 @@ type Props = {
   onDelete: (id: string) => void
   onLocalChange: (id: string, patch: Partial<PrayerRequestWithState>) => void
   index?: number
+}
+
+function timeAgo(iso: string): string {
+  const seconds = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = seconds / 60
+  if (minutes < 60) return `${Math.floor(minutes)}m ago`
+  const hours = minutes / 60
+  if (hours < 24) return `${Math.floor(hours)}h ago`
+  const days = hours / 24
+  if (days < 7) return `${Math.floor(days)}d ago`
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 export default function PrayerCard({
@@ -22,10 +35,33 @@ export default function PrayerCard({
   const [responding, setResponding] = useState(false)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
+  const [threadOpen, setThreadOpen] = useState(false)
+  // null = not loaded yet
+  const [thread, setThread] = useState<ThreadMessage[] | null>(null)
 
   // Any request with a phone on file can be replied to by text — SMS requests
   // always have one; web requests only when the requester opted in.
   const canReply = prayer.has_phone
+  const replyCount = prayer.reply_count ?? 0
+  // There's a conversation to show once we've written to them or they've
+  // written back.
+  const hasThread = replyCount > 0 || prayer.replied
+
+  async function loadThread() {
+    const res = await fetch(`/api/prayers/${prayer.id}/thread`)
+    if (res.ok) {
+      const data = await res.json()
+      setThread(data.items ?? [])
+    } else {
+      setThread([])
+    }
+  }
+
+  async function toggleThread() {
+    const next = !threadOpen
+    setThreadOpen(next)
+    if (next && thread === null) await loadThread()
+  }
 
   async function togglePray() {
     setBusy(true)
@@ -59,6 +95,7 @@ export default function PrayerCard({
       })
       setResponding(false)
       setMessage('')
+      if (threadOpen) await loadThread()
     } else {
       const data = await res.json().catch(() => ({}))
       setError(data.error ?? 'Could not send the response.')
@@ -83,6 +120,40 @@ export default function PrayerCard({
     onDelete(prayer.id)
   }
 
+  // This "request" was really a text back to us: file it on the person's
+  // earlier request and take it off the feed.
+  async function moveToThread() {
+    setBusy(true)
+    setError('')
+    const res = await fetch(`/api/prayers/${prayer.id}/reclassify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: 'thread' }),
+    })
+    if (res.ok) {
+      onDelete(prayer.id)
+      return
+    }
+    const data = await res.json().catch(() => ({}))
+    setError(data.error ?? 'Could not move this to a thread.')
+    setBusy(false)
+  }
+
+  // The reverse: a reply in the thread was really a new request.
+  async function promote(messageId: string) {
+    setBusy(true)
+    setError('')
+    const res = await fetch(`/api/inbound/${messageId}/promote`, { method: 'POST' })
+    if (res.ok) {
+      onLocalChange(prayer.id, { reply_count: Math.max(replyCount - 1, 0) })
+      await loadThread()
+    } else {
+      const data = await res.json().catch(() => ({}))
+      setError(data.error ?? 'Could not make this a request.')
+    }
+    setBusy(false)
+  }
+
   const date = new Date(prayer.created_at).toLocaleDateString('en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
   })
@@ -94,6 +165,11 @@ export default function PrayerCard({
         ? '1 person has prayed'
         : `${prayer.prayed_count} people have prayed`
 
+  const threadLabel =
+    replyCount === 0 ? 'Replied' : replyCount === 1 ? '1 reply' : `${replyCount} replies`
+
+  const requesterName = prayer.name ?? 'Anonymous'
+
   return (
     <div
       className="card p-6 sm:p-7 flex flex-col gap-4 animate-rise"
@@ -101,7 +177,7 @@ export default function PrayerCard({
     >
       <div className="flex items-baseline justify-between gap-4">
         <span className="text-sm font-medium text-ink-800">
-          {prayer.name ?? 'Anonymous'}
+          {requesterName}
         </span>
         <span className="text-xs text-ink-300 shrink-0">{date}</span>
       </div>
@@ -118,13 +194,65 @@ export default function PrayerCard({
             <span className="text-sage-600">You prayed</span>
           </>
         )}
-        {prayer.replied && (
+        {hasThread && (
           <>
             <span className="w-0.5 h-0.5 rounded-full bg-ink-300" />
-            <span className="text-sage-600">Replied</span>
+            <button
+              onClick={toggleThread}
+              className="text-sage-600 hover:text-sage-700 transition-colors duration-300"
+              aria-expanded={threadOpen}
+            >
+              {threadLabel}
+            </button>
           </>
         )}
       </div>
+
+      {/* The conversation: our texts to them, their texts back */}
+      {threadOpen && (
+        <div className="flex flex-col gap-3 pl-4 border-l-2 border-mist-100 animate-breathe">
+          {thread === null ? (
+            <p className="text-xs text-ink-300">One moment…</p>
+          ) : thread.length === 0 ? (
+            <p className="text-xs text-ink-300">Nothing here yet.</p>
+          ) : (
+            thread.map(m =>
+              m.kind === 'reaction' ? (
+                <p key={m.id} className="flex items-center gap-2 text-xs text-ink-300">
+                  <span className="text-base leading-none" aria-label="reaction">
+                    {reactionGlyph(m.body)}
+                  </span>
+                  <span>{requesterName} · {timeAgo(m.at)}</span>
+                </p>
+              ) : (
+                <div key={m.id} className="flex flex-col gap-0.5">
+                  <p className="text-xs text-ink-300">
+                    {m.direction === 'out' ? (m.author ?? 'Prayer team') : requesterName}
+                    {' · '}
+                    {timeAgo(m.at)}
+                  </p>
+                  <p
+                    className={`text-sm leading-relaxed whitespace-pre-wrap ${
+                      m.direction === 'out' ? 'text-ink-500' : 'text-ink-700'
+                    }`}
+                  >
+                    {m.body}
+                  </p>
+                  {m.direction === 'in' && (
+                    <button
+                      onClick={() => promote(m.id)}
+                      disabled={busy}
+                      className="self-start text-xs text-ink-300 hover:text-ink-500 transition-colors duration-300 disabled:opacity-50"
+                    >
+                      Make this a request
+                    </button>
+                  )}
+                </div>
+              )
+            )
+          )}
+        </div>
+      )}
 
       {error && <p className="text-sm text-red-500/80 animate-breathe">{error}</p>}
 
@@ -198,6 +326,13 @@ export default function PrayerCard({
           <button onClick={() => changeStatus('spam')} disabled={busy}
             className="hover:text-ink-500 transition-colors duration-300 disabled:opacity-50">
             Mark spam
+          </button>
+        )}
+        {prayer.source === 'sms' && prayer.has_phone && (
+          <button onClick={moveToThread} disabled={busy}
+            title="This was a text back to us, not a new request"
+            className="hover:text-ink-500 transition-colors duration-300 disabled:opacity-50">
+            Move to thread
           </button>
         )}
         <button onClick={remove} disabled={busy}

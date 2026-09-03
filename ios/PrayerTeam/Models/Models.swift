@@ -14,6 +14,52 @@ struct PrayerRequest: Codable, Identifiable, Hashable {
     let createdAt: Date
     let hasPhone: Bool
     var youPrayed: Bool
+    // Text replies the requester sent back. Optional so a build talking to a
+    // server without migration 017 still decodes.
+    var replyCount: Int?
+}
+
+// One line of a request's text conversation (GET /api/prayers/[id]/thread).
+// direction: "out" (a team member's reply) | "in" (the requester's text).
+// kind: "reply" | "reaction" — a reaction's body is Apple's tapback text
+// (`Loved "…"`); the view shows it as an emoji.
+struct ThreadMessage: Codable, Identifiable, Hashable {
+    let id: String
+    let direction: String
+    let kind: String
+    let body: String
+    let at: Date
+    let author: String?
+
+    var isReaction: Bool { kind == "reaction" }
+    var isInbound: Bool { direction == "in" }
+
+    var reactionGlyph: String {
+        if body.hasPrefix("Loved") { return "❤️" }
+        if body.hasPrefix("Liked") { return "👍" }
+        if body.hasPrefix("Disliked") { return "👎" }
+        if body.hasPrefix("Laughed at") { return "😂" }
+        if body.hasPrefix("Emphasized") { return "‼️" }
+        if body.hasPrefix("Questioned") { return "❓" }
+        if body.hasPrefix("Reacted "), let range = body.range(of: " to ") {
+            return String(body[body.index(body.startIndex, offsetBy: 8)..<range.lowerBound])
+        }
+        return "❤️"
+    }
+}
+
+struct ThreadPage: Codable {
+    let items: [ThreadMessage]
+}
+
+struct ReclassifyResult: Codable {
+    let success: Bool
+    let targetId: String
+}
+
+struct PromoteResult: Codable {
+    let success: Bool
+    let requestId: String
 }
 
 struct FeedPage: Codable {

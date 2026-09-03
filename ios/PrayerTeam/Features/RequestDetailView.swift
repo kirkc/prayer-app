@@ -11,11 +11,21 @@ struct RequestDetailView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var showRespond = false
+    // nil until the first load; empty when there's no conversation yet.
+    @State private var thread: [ThreadMessage]?
+    @State private var moveError: String?
+    @State private var busy = false
 
     private static let absolute: DateFormatter = {
         let f = DateFormatter()
         f.dateStyle = .medium
         f.timeStyle = .short
+        return f
+    }()
+
+    private static let relative: RelativeDateTimeFormatter = {
+        let f = RelativeDateTimeFormatter()
+        f.unitsStyle = .short
         return f
     }()
 
@@ -37,6 +47,103 @@ struct RequestDetailView: View {
             try? await Task.sleep(for: .milliseconds(350))
             showRespond = true
         }
+        .task(id: requestId) { await loadThread() }
+        .alert("Couldn't move it", isPresented: Binding(
+            get: { moveError != nil },
+            set: { if !$0 { moveError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(moveError ?? "")
+        }
+    }
+
+    private func loadThread() async {
+        if let page: ThreadPage = try? await store.api.get("/api/prayers/\(requestId)/thread") {
+            thread = page.items
+        }
+    }
+
+    // A reply in the thread was really a new request. Promote it, then pull
+    // the feed so it shows up at the top.
+    private func promote(_ message: ThreadMessage) async {
+        busy = true
+        defer { busy = false }
+        do {
+            let _: PromoteResult = try await store.api.post("/api/inbound/\(message.id)/promote")
+            await loadThread()
+            await store.refresh()
+        } catch {
+            moveError = (error as? APIError)?.message ?? "Could not make this a request."
+        }
+    }
+
+    private func moveToThread(_ prayer: PrayerRequest) async {
+        busy = true
+        defer { busy = false }
+        if let message = await store.moveToThread(prayer) {
+            moveError = message
+        } else {
+            dismiss()
+        }
+    }
+
+    private var hasConversation: Bool {
+        guard let prayer = store.current(requestId) else { return false }
+        return prayer.replied || (prayer.replyCount ?? 0) > 0 || !(thread?.isEmpty ?? true)
+    }
+
+    @ViewBuilder
+    private func conversation(_ prayer: PrayerRequest) -> some View {
+        let requester = prayer.name?.isEmpty == false ? prayer.name! : "Anonymous"
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Conversation")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(Color.ink400)
+
+            if let thread, !thread.isEmpty {
+                ForEach(thread) { message in
+                    if message.isReaction {
+                        HStack(spacing: 8) {
+                            Text(message.reactionGlyph)
+                                .font(.system(size: 16))
+                            Text("\(requester) · \(Self.relative.localizedString(for: message.at, relativeTo: .now))")
+                                .font(.system(size: 12))
+                                .foregroundStyle(Color.ink300)
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("\(message.isInbound ? requester : (message.author ?? "Prayer team")) · \(Self.relative.localizedString(for: message.at, relativeTo: .now))")
+                                .font(.system(size: 12))
+                                .foregroundStyle(Color.ink300)
+                            Text(message.body)
+                                .font(.system(size: 15))
+                                .fontWeight(.light)
+                                .foregroundStyle(message.isInbound ? Color.ink700 : Color.ink500)
+                                .lineSpacing(4)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            if message.isInbound {
+                                Button("Make this a request") {
+                                    Task { await promote(message) }
+                                }
+                                .font(.system(size: 12))
+                                .foregroundStyle(Color.ink300)
+                                .disabled(busy)
+                            }
+                        }
+                    }
+                }
+            } else if thread == nil {
+                ProgressView().tint(Color.sage500)
+            } else {
+                Text("Nothing here yet.")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color.ink300)
+            }
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .card()
     }
 
     @ViewBuilder
@@ -76,11 +183,20 @@ struct RequestDetailView: View {
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(Color.sage600)
                         }
+                        if let count = prayer.replyCount, count > 0 {
+                            Text(count == 1 ? "1 reply" : "\(count) replies")
+                                .font(.system(size: 12, weight: .medium))
+                                .foregroundStyle(Color.sage600)
+                        }
                     }
                 }
                 .padding(24)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .card()
+
+                if hasConversation {
+                    conversation(prayer)
+                }
 
                 Button {
                     Task { await store.togglePray(prayer) }
@@ -131,13 +247,19 @@ struct RequestDetailView: View {
                             Task { await triage(prayer, "spam") }
                         }
                     }
+                    if prayer.source == "sms" && prayer.hasPhone {
+                        // A text back to us that the webhook took for a request.
+                        Button("Move to thread") {
+                            Task { await moveToThread(prayer) }
+                        }
+                    }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                         .foregroundStyle(Color.ink400)
                 }
             }
         }
-        .sheet(isPresented: $showRespond) {
+        .sheet(isPresented: $showRespond, onDismiss: { Task { await loadThread() } }) {
             RespondSheet(store: store, prayer: prayer)
         }
     }

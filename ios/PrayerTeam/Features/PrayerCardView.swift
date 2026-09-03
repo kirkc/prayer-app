@@ -13,6 +13,15 @@ struct PrayerCardView: View {
         return f
     }()
 
+    // "Replied" once we've written to them; the reply count once they've
+    // written back. One label, since both mean "there's a conversation."
+    private var threadLabel: String? {
+        let count = prayer.replyCount ?? 0
+        if count == 1 { return "1 reply" }
+        if count > 1 { return "\(count) replies" }
+        return prayer.replied ? "Replied" : nil
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
@@ -72,8 +81,8 @@ struct PrayerCardView: View {
 
                 Spacer(minLength: 4)
 
-                if prayer.replied {
-                    Text("Replied")
+                if let threadLabel {
+                    Text(threadLabel)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(Color.sage600)
                         .lineLimit(1)
