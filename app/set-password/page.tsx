@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
 type Stage = 'checking' | 'ready' | 'saving' | 'invalid'
+type ResendStage = 'idle' | 'sending' | 'sent'
 
 // Landing page for invite and password-reset email links. Supabase redirects
 // here with a token; once the session is established, the member chooses a
@@ -21,6 +22,13 @@ export default function SetPasswordPage() {
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
+  // A dead link is a dead end otherwise — the member can't sign in to ask for
+  // a new one. `linkType` comes off the URL so the fresh email is worded the
+  // way the original was (invite vs reset).
+  const [linkType, setLinkType] = useState<'invite' | 'recovery'>('recovery')
+  const [resendEmail, setResendEmail] = useState('')
+  const [resendStage, setResendStage] = useState<ResendStage>('idle')
+  const [resendError, setResendError] = useState('')
 
   useEffect(() => {
     const supabase = getSupabase()
@@ -45,6 +53,7 @@ export default function SetPasswordPage() {
       // verify it to establish the session (see lib/auth-email.ts).
       const tokenHash = params.get('token_hash')
       const type = params.get('type')
+      if (type === 'invite') setLinkType('invite')
       if (tokenHash && (type === 'recovery' || type === 'invite')) {
         try { await supabase.auth.verifyOtp({ token_hash: tokenHash, type }) } catch { /* fall through */ }
       }
@@ -62,6 +71,28 @@ export default function SetPasswordPage() {
     const timer = setTimeout(() => settle(false), 3000)
     return () => { clearTimeout(timer); subscription.unsubscribe() }
   }, [])
+
+  async function handleResend(e: React.FormEvent) {
+    e.preventDefault()
+    setResendError('')
+    setResendStage('sending')
+    const res = await fetch('/api/auth/resend-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: resendEmail.trim(), type: linkType }),
+    }).catch(() => null)
+
+    if (res?.ok) {
+      setResendStage('sent')
+      return
+    }
+    const message =
+      res?.status === 429
+        ? 'Too many links requested — please wait a few minutes.'
+        : 'Could not send the link. Please try again.'
+    setResendError(message)
+    setResendStage('idle')
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -101,13 +132,49 @@ export default function SetPasswordPage() {
             One moment…
           </p>
         ) : stage === 'invalid' ? (
-          <div className="card p-8 text-center">
-            <p className="text-sm text-ink-600 leading-relaxed mb-2">
-              This link is invalid or has expired.
-            </p>
-            <p className="text-sm text-ink-400 leading-relaxed">
-              Ask an admin to send a fresh one, then open it right away.
-            </p>
+          <div className="card p-8">
+            {resendStage === 'sent' ? (
+              <>
+                <p className="text-sm text-ink-600 leading-relaxed mb-2 text-center">
+                  Check your email.
+                </p>
+                <p className="text-sm text-ink-400 leading-relaxed text-center">
+                  If that address has an account, a new link is on its way. It&apos;s
+                  good for 24 hours.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-ink-600 leading-relaxed mb-2 text-center">
+                  This link is invalid or has expired.
+                </p>
+                <p className="text-sm text-ink-400 leading-relaxed mb-5 text-center">
+                  Enter your email and we&apos;ll send a fresh one.
+                </p>
+                <form onSubmit={handleResend} className="space-y-4">
+                  <input
+                    type="email"
+                    required
+                    autoFocus
+                    placeholder="you@church.org"
+                    aria-label="Email address"
+                    value={resendEmail}
+                    onChange={e => setResendEmail(e.target.value)}
+                    className="input"
+                  />
+                  {resendError && (
+                    <p className="text-sm text-red-500/80 animate-breathe">{resendError}</p>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={resendStage === 'sending'}
+                    className="btn btn-primary w-full py-2.5 text-sm font-medium disabled:opacity-50"
+                  >
+                    {resendStage === 'sending' ? 'Sending…' : 'Send me a new link'}
+                  </button>
+                </form>
+              </>
+            )}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="card p-8 space-y-5">
