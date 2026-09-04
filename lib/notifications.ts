@@ -111,6 +111,31 @@ async function pushNewRequest(summary: NewRequestSummary, org: Org): Promise<voi
   )
 }
 
+// Resend caps sends at 10 requests per second per account, and an unbounded
+// Promise.all over a whole team walked straight into it — four members missed
+// a request on 2026-09-01. Send a few at a time and hold each batch open for
+// at least BATCH_MS, which holds the fan-out to 8 sends a second and leaves
+// headroom for a second invocation running at the same time. The fan-out
+// runs inside next/server's after(), so the extra wall time costs the person
+// submitting a request nothing.
+const BATCH_SIZE = 4
+const BATCH_MS = 550
+
+async function inPacedBatches<T>(
+  items: T[],
+  fn: (item: T) => Promise<void>
+): Promise<void> {
+  for (let i = 0; i < items.length; i += BATCH_SIZE) {
+    const startedAt = Date.now()
+    await Promise.all(items.slice(i, i + BATCH_SIZE).map(fn))
+    const more = i + BATCH_SIZE < items.length
+    const remaining = BATCH_MS - (Date.now() - startedAt)
+    if (more && remaining > 0) {
+      await new Promise(resolve => setTimeout(resolve, remaining))
+    }
+  }
+}
+
 // Immediate fan-out: push + email the org's subscribers about one new
 // request. Never throws — a bad address for one member must not break
 // ingestion.
@@ -131,23 +156,21 @@ export async function notifyNewRequest(
     cta: { label: 'Open the dashboard', url: `${getAppUrl()}/dashboard` },
   })
 
-  await Promise.all(
-    recipients.map(async r => {
-      try {
-        await sendEmail({
-          to: r.email,
-          subject: 'New prayer request',
-          html,
-          kind: 'email.new_request',
-          from: org.from_email,
-          orgId: org.id,
-          meta: { profile_id: r.id },
-        })
-      } catch (err) {
-        await logError('notify.immediate', err, { recipient: r.email })
-      }
-    })
-  )
+  await inPacedBatches(recipients, async r => {
+    try {
+      await sendEmail({
+        to: r.email,
+        subject: 'New prayer request',
+        html,
+        kind: 'email.new_request',
+        from: org.from_email,
+        orgId: org.id,
+        meta: { profile_id: r.id },
+      })
+    } catch (err) {
+      await logError('notify.immediate', err, { recipient: r.email })
+    }
+  })
 }
 
 export type ReplySummary = {

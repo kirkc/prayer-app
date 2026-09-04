@@ -28,6 +28,36 @@ function resolveFrom(from?: string | null): string {
   return from ?? process.env.NEUTRAL_FROM_EMAIL ?? FROM
 }
 
+// Resend allows 10 requests per second per account. Concurrent function
+// invocations can't see each other's traffic, so a burst still slips through
+// the pacing in notifications.ts now and then — on 2026-09-01 four team
+// members silently missed a new-request email. A 429 is transient by
+// definition, so retry it with backoff instead of dropping the send.
+const RATE_LIMIT_RETRIES = 3
+
+function isRateLimit(error: { name?: string; message?: string }): boolean {
+  return (
+    error.name === 'rate_limit_exceeded' ||
+    /too many requests/i.test(error.message ?? '')
+  )
+}
+
+function wait(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+async function sendWithRetry(payload: Parameters<Resend['emails']['send']>[0]) {
+  for (let attempt = 0; ; attempt++) {
+    const { data, error } = await getClient().emails.send(payload)
+    if (!error) return data
+    if (attempt < RATE_LIMIT_RETRIES && isRateLimit(error)) {
+      await wait(600 * 2 ** attempt)
+      continue
+    }
+    throw new Error(`Resend send failed: ${error.message}`)
+  }
+}
+
 // Sends and records the attempt in message_log (kind identifies the email
 // type on the ops dashboard; the Resend id lets the Resend webhook update the
 // row with delivered/bounced later). Still throws on failure — callers keep
@@ -52,8 +82,7 @@ export async function sendEmail({
   meta?: Record<string, unknown>
 }): Promise<void> {
   try {
-    const { data, error } = await getClient().emails.send({ from: resolveFrom(from), to, subject, html })
-    if (error) throw new Error(`Resend send failed: ${error.message}`)
+    const data = await sendWithRetry({ from: resolveFrom(from), to, subject, html })
     await logMessage({
       channel: 'email',
       kind,
