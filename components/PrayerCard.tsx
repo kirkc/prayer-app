@@ -1,8 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { PrayerRequestWithState, ThreadMessage } from '@/types'
-import { reactionGlyph } from '@/lib/sms-inbound'
+import { PrayerRequestWithState, Thread } from '@/types'
 
 type Props = {
   prayer: PrayerRequestWithState
@@ -24,6 +23,19 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
+// "Alex reacted ❤️ to 3 prayer updates" — tapbacks on texts that aren't in
+// the thread, folded into one quiet line instead of one line each.
+function otherReactionsLine(who: string, reactions: Thread['other_reactions']): string {
+  const glyphs = Array.from(new Set(reactions.map(r => r.glyph))).join(' ')
+  const n = reactions.length
+  const updates = reactions.filter(r => r.about === 'update').length
+  const what =
+    updates === n
+      ? n === 1 ? 'a prayer update' : `${n} prayer updates`
+      : n === 1 ? 'a text' : `${n} texts`
+  return `${who} reacted ${glyphs} to ${what}`
+}
+
 export default function PrayerCard({
   prayer,
   onStatusChange,
@@ -37,7 +49,7 @@ export default function PrayerCard({
   const [error, setError] = useState('')
   const [threadOpen, setThreadOpen] = useState(false)
   // null = not loaded yet
-  const [thread, setThread] = useState<ThreadMessage[] | null>(null)
+  const [thread, setThread] = useState<Thread | null>(null)
 
   // Any request with a phone on file can be replied to by text — SMS requests
   // always have one; web requests only when the requester opted in.
@@ -51,9 +63,9 @@ export default function PrayerCard({
     const res = await fetch(`/api/prayers/${prayer.id}/thread`)
     if (res.ok) {
       const data = await res.json()
-      setThread(data.items ?? [])
+      setThread({ items: data.items ?? [], other_reactions: data.other_reactions ?? [] })
     } else {
-      setThread([])
+      setThread({ items: [], other_reactions: [] })
     }
   }
 
@@ -213,18 +225,11 @@ export default function PrayerCard({
         <div className="flex flex-col gap-3 pl-4 border-l-2 border-mist-100 animate-breathe">
           {thread === null ? (
             <p className="text-xs text-ink-300">One moment…</p>
-          ) : thread.length === 0 ? (
+          ) : thread.items.length === 0 && thread.other_reactions.length === 0 ? (
             <p className="text-xs text-ink-300">Nothing here yet.</p>
           ) : (
-            thread.map(m =>
-              m.kind === 'reaction' ? (
-                <p key={m.id} className="flex items-center gap-2 text-xs text-ink-300">
-                  <span className="text-base leading-none" aria-label="reaction">
-                    {reactionGlyph(m.body)}
-                  </span>
-                  <span>{requesterName} · {timeAgo(m.at)}</span>
-                </p>
-              ) : (
+            <>
+              {thread.items.map(m => (
                 <div key={m.id} className="flex flex-col gap-0.5">
                   <p className="text-xs text-ink-300">
                     {m.direction === 'out' ? (m.author ?? 'Prayer team') : requesterName}
@@ -238,6 +243,11 @@ export default function PrayerCard({
                   >
                     {m.body}
                   </p>
+                  {m.reactions.length > 0 && (
+                    <p className="text-xs text-ink-300" title={`${requesterName} reacted`}>
+                      {m.reactions.map(r => r.glyph).join(' ')}
+                    </p>
+                  )}
                   {m.direction === 'in' && (
                     <button
                       onClick={() => promote(m.id)}
@@ -248,8 +258,11 @@ export default function PrayerCard({
                     </button>
                   )}
                 </div>
-              )
-            )
+              ))}
+              {thread.other_reactions.length > 0 && (
+                <p className="text-xs text-ink-300">{otherReactionsLine(requesterName, thread.other_reactions)}</p>
+              )}
+            </>
           )}
         </div>
       )}

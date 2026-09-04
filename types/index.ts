@@ -33,18 +33,36 @@ export type PrayerRequestWithState = PrayerRequest & {
   you_prayed: boolean
 }
 
+// A tapback the requester left on one of our texts, already resolved to an
+// emoji ("Loved" → ❤️).
+export type ThreadReaction = {
+  glyph: string
+  at: string
+}
+
 // One line of a request's text conversation, as GET /api/prayers/[id]/thread
 // returns it: outbound team replies and the requester's inbound texts,
-// merged by time. Reactions carry the raw tapback text ("Loved "…""); the
-// client renders them as a heart.
+// merged by time. A tapback is pinned to the outbound message it quotes
+// rather than shown as a line of its own.
 export type ThreadMessage = {
   id: string
   direction: 'out' | 'in'
-  kind: 'reply' | 'reaction'
   body: string
   at: string
   // Display name of the team member who sent an outbound reply.
   author: string | null
+  reactions: ThreadReaction[]
+}
+
+// A tapback on a text that isn't in the thread — the daily "someone prayed
+// for you" update or the confirmation — or one we couldn't match.
+export type ThreadOtherReaction = ThreadReaction & {
+  about: 'update' | 'ack' | 'text'
+}
+
+export type Thread = {
+  items: ThreadMessage[]
+  other_reactions: ThreadOtherReaction[]
 }
 
 export type PrayerResponse = {

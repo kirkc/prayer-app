@@ -21,35 +21,51 @@ struct PrayerRequest: Codable, Identifiable, Hashable {
 
 // One line of a request's text conversation (GET /api/prayers/[id]/thread).
 // direction: "out" (a team member's reply) | "in" (the requester's text).
-// kind: "reply" | "reaction" — a reaction's body is Apple's tapback text
-// (`Loved "…"`); the view shows it as an emoji.
+// A tapback the requester left on an outbound text rides along on that
+// message as a glyph rather than being a line of its own.
+struct ThreadReaction: Codable, Hashable {
+    let glyph: String
+    let at: Date
+}
+
 struct ThreadMessage: Codable, Identifiable, Hashable {
     let id: String
     let direction: String
-    let kind: String
     let body: String
     let at: Date
     let author: String?
+    let reactions: [ThreadReaction]
 
-    var isReaction: Bool { kind == "reaction" }
     var isInbound: Bool { direction == "in" }
+}
 
-    var reactionGlyph: String {
-        if body.hasPrefix("Loved") { return "❤️" }
-        if body.hasPrefix("Liked") { return "👍" }
-        if body.hasPrefix("Disliked") { return "👎" }
-        if body.hasPrefix("Laughed at") { return "😂" }
-        if body.hasPrefix("Emphasized") { return "‼️" }
-        if body.hasPrefix("Questioned") { return "❓" }
-        if body.hasPrefix("Reacted "), let range = body.range(of: " to ") {
-            return String(body[body.index(body.startIndex, offsetBy: 8)..<range.lowerBound])
-        }
-        return "❤️"
-    }
+// A tapback on a text that isn't in the thread: the daily prayer update
+// ("update"), the confirmation ("ack"), or something we couldn't match.
+struct ThreadOtherReaction: Codable, Hashable {
+    let glyph: String
+    let at: Date
+    let about: String
 }
 
 struct ThreadPage: Codable {
     let items: [ThreadMessage]
+    let otherReactions: [ThreadOtherReaction]
+
+    var isEmpty: Bool { items.isEmpty && otherReactions.isEmpty }
+
+    // "Alex reacted ❤️ to 3 prayer updates"
+    func otherReactionsLine(who: String) -> String {
+        let glyphs = Array(Set(otherReactions.map(\.glyph))).sorted().joined(separator: " ")
+        let n = otherReactions.count
+        let updates = otherReactions.filter { $0.about == "update" }.count
+        let what: String
+        if updates == n {
+            what = n == 1 ? "a prayer update" : "\(n) prayer updates"
+        } else {
+            what = n == 1 ? "a text" : "\(n) texts"
+        }
+        return "\(who) reacted \(glyphs) to \(what)"
+    }
 }
 
 struct ReclassifyResult: Codable {

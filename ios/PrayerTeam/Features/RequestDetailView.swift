@@ -12,7 +12,10 @@ struct RequestDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showRespond = false
     // nil until the first load; empty when there's no conversation yet.
-    @State private var thread: [ThreadMessage]?
+    @State private var thread: ThreadPage?
+    // Collapsed by default: a long back-and-forth shouldn't push Pray and
+    // Respond off the bottom of the screen.
+    @State private var threadExpanded = false
     @State private var moveError: String?
     @State private var busy = false
 
@@ -60,7 +63,7 @@ struct RequestDetailView: View {
 
     private func loadThread() async {
         if let page: ThreadPage = try? await store.api.get("/api/prayers/\(requestId)/thread") {
-            thread = page.items
+            thread = page
         }
     }
 
@@ -93,25 +96,40 @@ struct RequestDetailView: View {
         return prayer.replied || (prayer.replyCount ?? 0) > 0 || !(thread?.isEmpty ?? true)
     }
 
+    // "Conversation · 3" with a chevron. Tap to open.
+    private func conversationHeader(_ prayer: PrayerRequest) -> some View {
+        let count = thread?.items.count ?? (prayer.replyCount ?? 0)
+        return Button {
+            withAnimation(.easeInOut(duration: 0.2)) { threadExpanded.toggle() }
+        } label: {
+            HStack(spacing: 6) {
+                Text("Conversation")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Color.ink400)
+                if count > 0 {
+                    Text("· \(count)")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.ink300)
+                }
+                Spacer()
+                Image(systemName: threadExpanded ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(Color.ink300)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
     @ViewBuilder
     private func conversation(_ prayer: PrayerRequest) -> some View {
         let requester = prayer.name?.isEmpty == false ? prayer.name! : "Anonymous"
         VStack(alignment: .leading, spacing: 14) {
-            Text("Conversation")
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.ink400)
+            conversationHeader(prayer)
 
-            if let thread, !thread.isEmpty {
-                ForEach(thread) { message in
-                    if message.isReaction {
-                        HStack(spacing: 8) {
-                            Text(message.reactionGlyph)
-                                .font(.system(size: 16))
-                            Text("\(requester) · \(Self.relative.localizedString(for: message.at, relativeTo: .now))")
-                                .font(.system(size: 12))
-                                .foregroundStyle(Color.ink300)
-                        }
-                    } else {
+            if threadExpanded {
+                if let thread, !thread.isEmpty {
+                    ForEach(thread.items) { message in
                         VStack(alignment: .leading, spacing: 3) {
                             Text("\(message.isInbound ? requester : (message.author ?? "Prayer team")) · \(Self.relative.localizedString(for: message.at, relativeTo: .now))")
                                 .font(.system(size: 12))
@@ -122,6 +140,11 @@ struct RequestDetailView: View {
                                 .foregroundStyle(message.isInbound ? Color.ink700 : Color.ink500)
                                 .lineSpacing(4)
                                 .frame(maxWidth: .infinity, alignment: .leading)
+                            if !message.reactions.isEmpty {
+                                Text(message.reactions.map(\.glyph).joined(separator: " "))
+                                    .font(.system(size: 13))
+                                    .accessibilityLabel("\(requester) reacted")
+                            }
                             if message.isInbound {
                                 Button("Make this a request") {
                                     Task { await promote(message) }
@@ -132,13 +155,18 @@ struct RequestDetailView: View {
                             }
                         }
                     }
+                    if !thread.otherReactions.isEmpty {
+                        Text(thread.otherReactionsLine(who: requester))
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color.ink300)
+                    }
+                } else if thread == nil {
+                    ProgressView().tint(Color.sage500)
+                } else {
+                    Text("Nothing here yet.")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Color.ink300)
                 }
-            } else if thread == nil {
-                ProgressView().tint(Color.sage500)
-            } else {
-                Text("Nothing here yet.")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Color.ink300)
             }
         }
         .padding(24)

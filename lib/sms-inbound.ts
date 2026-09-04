@@ -50,6 +50,37 @@ export function reactionGlyph(body: string): string {
   return m ? m[1] : '❤️'
 }
 
+// The text a tapback quotes: `Loved "Someone prayed for you today."` →
+// `Someone prayed for you today.` Null when the body isn't a tapback.
+export function tapbackQuote(body: string): string | null {
+  const m = body
+    .trim()
+    .match(/^(?:Loved|Liked|Disliked|Laughed at|Emphasized|Questioned|Reacted .{1,8} to) [“"]([\s\S]*)[”"]$/u)
+  return m ? m[1].trim() : null
+}
+
+function normalize(s: string): string {
+  return s.replace(/\s+/g, ' ').replace(/[…]+$/, '').trim().toLowerCase()
+}
+
+// Does a tapback's quoted text refer to this outbound message? Exact after
+// whitespace folding, or one contains the other — a first-contact reply
+// carries an "Org name: " prefix the stored body doesn't, and a long quote
+// may be trimmed with an ellipsis.
+export function quoteMatches(quote: string, body: string): boolean {
+  const q = normalize(quote)
+  const b = normalize(body)
+  if (!q || !b) return false
+  return q === b || q.endsWith(b) || b.endsWith(q) || b.startsWith(q)
+}
+
+// For a tapback with no thread message to pin to: what did they react to?
+export function describeReactionTarget(quote: string): 'update' | 'ack' | 'text' {
+  if (/prayed for you today/i.test(quote)) return 'update'
+  if (/thank you for your prayer request/i.test(quote)) return 'ack'
+  return 'text'
+}
+
 export type RecentOutbound = {
   request_id: string | null
   // The team member who sent it, when it was a reply from the dashboard.
