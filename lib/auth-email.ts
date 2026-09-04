@@ -26,8 +26,18 @@ type Copy = {
   bodyHtml: string
 }
 
+// How long an emailed auth link stays good. This does NOT set the expiry —
+// Supabase Auth does, under Auth > Providers > Email > Email OTP Expiration —
+// it only keeps the email copy honest, so change both together. Supabase
+// disallows anything over 86400 seconds (24 hours), so that's the ceiling:
+// https://supabase.com/docs/guides/auth/auth-email-passwordless
+export const AUTH_LINK_TTL_HOURS: number = 24
+
+const ttlPhrase =
+  AUTH_LINK_TTL_HOURS === 1 ? 'one hour' : `${AUTH_LINK_TTL_HOURS} hours`
+
 const NOTE =
-  '<p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#4c5e66;">This link expires in one hour and can only be used once.</p>'
+  `<p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#4c5e66;">This link expires in ${ttlPhrase} and can only be used once.</p>`
 
 const COPY: Record<AuthEmailType, Copy> = {
   recovery: {
@@ -48,7 +58,7 @@ const COPY: Record<AuthEmailType, Copy> = {
     intro: 'Use the link below to sign in to your prayer-team account — no password needed.',
     ctaLabel: 'Sign in',
     bodyHtml:
-      '<p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#4c5e66;">This link expires in one hour and can only be used once. Open it on this device to be signed straight in.</p>',
+      `<p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#4c5e66;">This link expires in ${ttlPhrase} and can only be used once. Open it on this device to be signed straight in.</p>`,
   },
   invite: {
     landing: '/set-password',
