@@ -24,6 +24,22 @@ function serializeError(err: unknown): Record<string, unknown> {
   return { value: String(err) }
 }
 
+// Not every upstream failure hands back a sentence. Supabase behind Cloudflare
+// answers a blocked request with a whole HTML page, and three of those landed
+// in app_errors on 2026-09-01 — six kilobytes each, unreadable on the ops
+// dashboard and impossible to group by. The full body still goes to `detail`;
+// `message` gets the short version.
+const MAX_MESSAGE = 500
+
+function condenseMessage(raw: string): string {
+  const m = raw.trim()
+  if (/^<(!doctype|html)\b/i.test(m)) {
+    const title = m.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim()
+    return `Upstream returned an HTML error page${title ? `: ${title}` : ''}`
+  }
+  return m.length > MAX_MESSAGE ? m.slice(0, MAX_MESSAGE) + '…' : m
+}
+
 export async function logError(
   scope: string,
   err: unknown,
@@ -41,7 +57,7 @@ export async function logError(
     const service = createServiceClient()
     await service.from('app_errors').insert({
       scope,
-      message,
+      message: condenseMessage(message),
       detail: { error: serializeError(err), ...detail },
     })
   } catch (logErr) {
