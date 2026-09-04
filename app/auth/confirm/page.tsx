@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
@@ -13,11 +13,14 @@ type Stage = 'checking' | 'invalid'
 // Supabase client is intentionally cookie-read-only.
 export default function AuthConfirmPage() {
   const router = useRouter()
-  const supabaseRef = useRef(createClient())
   const [stage, setStage] = useState<Stage>('checking')
 
+  // Built inside the effect, not during render. This is a client component,
+  // but Next still renders it once on the server to prerender the page, and
+  // createBrowserClient throws there without the NEXT_PUBLIC_* vars. Effects
+  // don't run in that pass, so the browser client stays in the browser.
   useEffect(() => {
-    const supabase = supabaseRef.current
+    const supabase = createClient()
     let done = false
 
     const succeed = () => {

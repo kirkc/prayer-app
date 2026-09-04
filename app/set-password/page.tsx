@@ -11,14 +11,19 @@ type Stage = 'checking' | 'ready' | 'saving' | 'invalid'
 // new password.
 export default function SetPasswordPage() {
   const router = useRouter()
-  const supabaseRef = useRef(createClient())
+  // Created on first use, never during render. This is a client component,
+  // but Next still renders it once on the server to prerender the page, and
+  // createBrowserClient throws there without the NEXT_PUBLIC_* vars. Both
+  // callers below are client-only (an effect and a submit handler).
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null)
+  const getSupabase = () => (supabaseRef.current ??= createClient())
   const [stage, setStage] = useState<Stage>('checking')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState('')
 
   useEffect(() => {
-    const supabase = supabaseRef.current
+    const supabase = getSupabase()
     let done = false
 
     const settle = (ok: boolean) => {
@@ -71,7 +76,7 @@ export default function SetPasswordPage() {
     }
     setStage('saving')
 
-    const { error } = await supabaseRef.current.auth.updateUser({ password })
+    const { error } = await getSupabase().auth.updateUser({ password })
     if (error) {
       setError(error.message)
       setStage('ready')
