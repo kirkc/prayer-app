@@ -223,11 +223,13 @@ let thirdId
 
 {
   const { status, body } = await api(`/api/prayers/${firstId}/thread`)
-  const kinds = (body?.items ?? []).map(i => `${i.direction}:${i.kind}`)
+  const items = body?.items ?? []
+  const other = body?.other_reactions ?? []
   check(
-    'GET thread returns the conversation in order',
-    status === 200 && kinds.join(',') === 'in:reaction,in:reply',
-    `status ${status}, ${kinds.join(',')}`
+    'GET thread returns the reply, with the prayer-update heart folded aside',
+    status === 200 && items.length === 1 && items[0].direction === 'in' && items[0].body === 'Thank you so much' &&
+      other.length === 1 && other[0].glyph === '❤️' && other[0].about === 'update',
+    `status ${status}, items ${JSON.stringify(items).slice(0, 120)}, other ${JSON.stringify(other)}`
   )
 }
 

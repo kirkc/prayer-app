@@ -54,7 +54,7 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         PRODUCT_BUNDLE_IDENTIFIER: org.redemptionseattle.prayerteam
         # 3 was consumed by the mislabelled 12 Aug upload (see RELEASE.md).
-        CURRENT_PROJECT_VERSION: 5
+        CURRENT_PROJECT_VERSION: 6
         MARKETING_VERSION: 0.4.0
         SWIFT_VERSION: '5.10'
         TARGETED_DEVICE_FAMILY: '1'
