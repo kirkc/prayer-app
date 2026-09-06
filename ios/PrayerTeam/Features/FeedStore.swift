@@ -126,6 +126,9 @@ final class FeedStore {
         items[i].replied = result.replied
         items[i].youPrayed = result.youPrayed
         items[i].prayedCount = result.prayedCount
+        if let responseCount = result.responseCount {
+            items[i].responseCount = responseCount
+        }
     }
 
     // This "request" was really a text back to us. The server files it on the

@@ -93,12 +93,12 @@ struct RequestDetailView: View {
 
     private var hasConversation: Bool {
         guard let prayer = store.current(requestId) else { return false }
-        return prayer.replied || (prayer.replyCount ?? 0) > 0 || !(thread?.isEmpty ?? true)
+        return prayer.replied || prayer.messageCount > 0 || !(thread?.isEmpty ?? true)
     }
 
     // "Conversation · 3" with a chevron. Tap to open.
     private func conversationHeader(_ prayer: PrayerRequest) -> some View {
-        let count = thread?.items.count ?? (prayer.replyCount ?? 0)
+        let count = thread?.items.count ?? prayer.messageCount
         return Button {
             withAnimation(.easeInOut(duration: 0.2)) { threadExpanded.toggle() }
         } label: {
@@ -211,8 +211,9 @@ struct RequestDetailView: View {
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(Color.sage600)
                         }
-                        if let count = prayer.replyCount, count > 0 {
-                            Text(count == 1 ? "1 reply" : "\(count) replies")
+                        if prayer.messageCount > 0 {
+                            let count = prayer.messageCount
+                            Text(count == 1 ? "1 message" : "\(count) messages")
                                 .font(.system(size: 12, weight: .medium))
                                 .foregroundStyle(Color.sage600)
                         }

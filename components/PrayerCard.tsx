@@ -54,10 +54,11 @@ export default function PrayerCard({
   // Any request with a phone on file can be replied to by text — SMS requests
   // always have one; web requests only when the requester opted in.
   const canReply = prayer.has_phone
+  // Both halves of the conversation: what they've sent us and what we've
+  // sent them. The label counts messages, not just inbound ones.
   const replyCount = prayer.reply_count ?? 0
-  // There's a conversation to show once we've written to them or they've
-  // written back.
-  const hasThread = replyCount > 0 || prayer.replied
+  const messageCount = replyCount + (prayer.response_count ?? 0)
+  const hasThread = messageCount > 0 || prayer.replied
 
   async function loadThread() {
     const res = await fetch(`/api/prayers/${prayer.id}/thread`)
@@ -104,6 +105,7 @@ export default function PrayerCard({
         replied: true,
         you_prayed: true,
         prayed_count: data.prayed_count,
+        response_count: data.response_count,
       })
       setResponding(false)
       setMessage('')
@@ -178,7 +180,11 @@ export default function PrayerCard({
         : `${prayer.prayed_count} people have prayed`
 
   const threadLabel =
-    replyCount === 0 ? 'Replied' : replyCount === 1 ? '1 reply' : `${replyCount} replies`
+    messageCount === 0
+      ? 'Replied'
+      : messageCount === 1
+        ? '1 message'
+        : `${messageCount} messages`
 
   const requesterName = prayer.name ?? 'Anonymous'
 

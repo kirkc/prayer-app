@@ -119,7 +119,7 @@ export async function POST(req: NextRequest, { params }: Params) {
 
   const { data: updated } = await service
     .from('prayer_requests')
-    .select('prayed_count')
+    .select('prayed_count, response_count')
     .eq('id', id)
     .single()
 
@@ -128,5 +128,6 @@ export async function POST(req: NextRequest, { params }: Params) {
     replied: true,
     you_prayed: true,
     prayed_count: updated?.prayed_count ?? 0,
+    response_count: updated?.response_count ?? 0,
   })
 }

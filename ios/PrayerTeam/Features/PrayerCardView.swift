@@ -13,12 +13,13 @@ struct PrayerCardView: View {
         return f
     }()
 
-    // "Replied" once we've written to them; the reply count once they've
-    // written back. One label, since both mean "there's a conversation."
+    // How big the conversation is, counting both halves: what they've sent
+    // us and what we've sent them. "Replied" is the fallback for a request
+    // whose messages predate the counts.
     private var threadLabel: String? {
-        let count = prayer.replyCount ?? 0
-        if count == 1 { return "1 reply" }
-        if count > 1 { return "\(count) replies" }
+        let count = prayer.messageCount
+        if count == 1 { return "1 message" }
+        if count > 1 { return "\(count) messages" }
         return prayer.replied ? "Replied" : nil
     }
 
