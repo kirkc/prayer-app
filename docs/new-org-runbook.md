@@ -95,6 +95,11 @@ This is a project, not a toggle — plan weeks, not days:
    other churches.
 3. They need real, church-specific privacy/terms pages for the campaign —
    the generic `/legal/*` pages are not tied to a registered brand.
+   When you write the campaign's `message_flow`, describe the *current* opt-in:
+   the Mobile number field is optional and always visible, and providing a
+   number IS the consent (the disclosures sit directly under the field). There
+   is no opt-in checkbox any more — Redemption's registered `message_flow` may
+   still describe one, so fix it in the same sitting (deferred 2026-09-06).
 4. Point the number's inbound webhook at `https://<app-domain>/api/sms` —
    the handler routes by the `To` number automatically.
 5. `update organizations set twilio_phone = '+1...' where slug = 'hillside';`

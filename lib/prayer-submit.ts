@@ -64,12 +64,13 @@ export async function submitPrayer(req: NextRequest, org: Org): Promise<NextResp
     return json({ error: 'Prayer request is too long.' }, 400)
   }
 
-  // Optional: the requester can opt into "someone prayed for you" texts by
-  // giving a phone number and checking consent. Only store the number when
-  // both are present, it's a valid US number we can actually text, AND this
-  // church has texting set up — a church without a Twilio number can never
-  // send updates, so storing the number would be collecting data we can't
-  // act on.
+  // Optional: the requester opts into "someone prayed for you" texts by
+  // giving a phone number on the form — the disclosures sit under the field,
+  // so the number itself is the consent (notify_prayers travels with it).
+  // Only store it when the flag is set, it's a valid US number we can
+  // actually text, AND this church has texting set up — a church without a
+  // Twilio number can never send updates, so storing the number would be
+  // collecting data we can't act on.
   let phone: string | null = null
   if (
     org.twilio_phone !== null &&

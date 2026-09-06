@@ -7,7 +7,7 @@ type State = 'idle' | 'loading' | 'success' | 'error'
 // The public prayer-request form, shared by the home page (Redemption — that
 // page is A2P 10DLC campaign evidence and must not change) and the per-church
 // /[slug] pages. When a church has no texting number (smsNumber null) the
-// phone opt-in and the "Prefer to text?" card disappear entirely.
+// phone field and the "Prefer to text?" card disappear entirely.
 export type PrayerFormProps = {
   orgName: string
   // Display-formatted texting number, or null when SMS is not set up.
@@ -29,7 +29,6 @@ export default function PrayerForm({
   const [name, setName] = useState('')
   const [request, setRequest] = useState('')
   const [phone, setPhone] = useState('')
-  const [notifyPrayers, setNotifyPrayers] = useState(false)
   const [website, setWebsite] = useState('') // honeypot — real users leave blank
   const [state, setState] = useState<State>('idle')
   const [errorMsg, setErrorMsg] = useState('')
@@ -47,8 +46,8 @@ export default function PrayerForm({
       body: JSON.stringify({
         name: name.trim() || null,
         request,
-        phone: smsEnabled && notifyPrayers ? phone.trim() : '',
-        notify_prayers: smsEnabled && notifyPrayers && phone.trim() !== '',
+        phone: smsEnabled ? phone.trim() : '',
+        notify_prayers: smsEnabled && phone.trim() !== '',
         website,
       }),
     })
@@ -58,7 +57,6 @@ export default function PrayerForm({
       setName('')
       setRequest('')
       setPhone('')
-      setNotifyPrayers(false)
     } else {
       const data = await res.json()
       setErrorMsg(data.error ?? 'Something went wrong. Please try again.')
@@ -114,20 +112,6 @@ export default function PrayerForm({
             style={{ animationDelay: '0.1s' }}
           >
             <div>
-              <label className="block text-sm text-ink-600 mb-2" htmlFor="name">
-                Your name <span className="text-ink-300">(optional)</span>
-              </label>
-              <input
-                id="name"
-                type="text"
-                value={name}
-                onChange={e => setName(e.target.value)}
-                placeholder="First name, or leave blank"
-                className="input"
-              />
-            </div>
-
-            <div>
               <label className="block text-sm text-ink-600 mb-2" htmlFor="request">
                 Prayer request
               </label>
@@ -142,50 +126,53 @@ export default function PrayerForm({
               />
             </div>
 
-            {/* Optional: opt into "someone prayed for you" texts. */}
+            <div>
+              <label className="block text-sm text-ink-600 mb-2" htmlFor="name">
+                Your name <span className="text-ink-300">(optional)</span>
+              </label>
+              <input
+                id="name"
+                type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                placeholder="First name, or leave blank"
+                className="input"
+              />
+            </div>
+
+            {/* Optional, but the number is what unlocks "someone prayed for
+                you" texts — giving it is the consent, so the disclosures sit
+                right under the field. */}
             {smsEnabled && (
               <div>
-                <label className="flex items-start gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={notifyPrayers}
-                    onChange={e => setNotifyPrayers(e.target.checked)}
-                    className="mt-0.5 accent-sage-600 w-4 h-4 shrink-0"
-                  />
-                  <span className="text-sm text-ink-600 leading-relaxed">
-                    Text me when people pray for my request{' '}
-                    <span className="text-ink-300">(optional)</span>
-                  </span>
+                <label className="block text-sm text-ink-600 mb-2" htmlFor="phone">
+                  Mobile number <span className="text-ink-300">(optional)</span>
                 </label>
-
-                {notifyPrayers && (
-                  <div className="mt-3 animate-breathe">
-                    <input
-                      type="tel"
-                      inputMode="tel"
-                      autoComplete="tel"
-                      value={phone}
-                      onChange={e => setPhone(e.target.value)}
-                      placeholder="(206) 555-0123"
-                      className="input"
-                      aria-label="Mobile number"
-                    />
-                    <p className="text-xs text-ink-300 leading-relaxed mt-2">
-                      We&rsquo;ll text you at most once a day when people pray for
-                      your request. Message and data rates may apply. Reply{' '}
-                      <strong>STOP</strong> to opt out, <strong>HELP</strong> for
-                      help. See our{' '}
-                      <a href={privacyHref} className="underline hover:text-ink-500">
-                        Privacy Policy
-                      </a>{' '}
-                      and{' '}
-                      <a href={termsHref} className="underline hover:text-ink-500">
-                        Terms
-                      </a>
-                      .
-                    </p>
-                  </div>
-                )}
+                <input
+                  id="phone"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  placeholder="(206) 555-0123"
+                  className="input"
+                />
+                <p className="text-sm text-ink-400 leading-relaxed mt-2">
+                  We&rsquo;ll text you when people pray for your request.
+                </p>
+                <p className="text-xs text-ink-300 leading-relaxed mt-2">
+                  At most once a day. Msg &amp; data rates may apply. Reply{' '}
+                  <strong>STOP</strong> to opt out, <strong>HELP</strong> for
+                  help.{' '}
+                  <a href={privacyHref} className="underline hover:text-ink-500">
+                    Privacy
+                  </a>{' '}
+                  ·{' '}
+                  <a href={termsHref} className="underline hover:text-ink-500">
+                    Terms
+                  </a>
+                </p>
               </div>
             )}
 
@@ -233,20 +220,17 @@ export default function PrayerForm({
               team may follow up with a personal response.
             </p>
             <p className="text-xs text-ink-300 leading-relaxed mt-4">
-              By texting {orgName}, you agree to receive a
-              confirmation reply and, if requested, a follow-up response.
-              Message frequency varies. Message and data rates may apply.
+              By texting {orgName} you agree to receive a confirmation and any
+              follow-up. Msg frequency varies. Msg &amp; data rates may apply.
               Reply <strong>STOP</strong> to opt out, <strong>HELP</strong> for
-              help, or <strong>REMOVE</strong> to delete your prayer request
-              data. See our{' '}
+              help, <strong>REMOVE</strong> to delete your data.{' '}
               <a href={privacyHref} className="underline hover:text-ink-500">
-                Privacy Policy
+                Privacy
               </a>{' '}
-              and{' '}
+              ·{' '}
               <a href={termsHref} className="underline hover:text-ink-500">
-                Terms of Service
+                Terms
               </a>
-              .
             </p>
           </div>
         )}
