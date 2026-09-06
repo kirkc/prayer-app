@@ -154,6 +154,64 @@ sitting in beta, so the order below matters.
 Both URLs only resolve after the web app is deployed — deploy before
 submitting, or review fails on a dead link.
 
+Marketing URL: leave empty (optional; there is no marketing site).
+Copyright: `2026 Kirk Castro` — the developer account is individual, so
+this matches the seller name Apple shows. Use the church's legal name
+instead only if the church, not Kirk, owns the rights.
+
+**The Version field must equal the build's `MARKETING_VERSION`.** App Store
+Connect groups builds into trains by `CFBundleShortVersionString`, and a
+version record only offers builds from its own train — so a record created
+as "1.0" cannot see an 0.4.0 build, and the build picker just looks empty.
+
+### Promotional Text (170 max — editable any time, no new build)
+
+> The private companion for your church's prayer team. Read what the
+> congregation has shared, mark that you've prayed, and reply with a word of
+> encouragement.
+
+### Keywords (100 max)
+
+> prayer,church,ministry,prayer team,congregation,intercession,requests
+
+Near-meaningless for an unlisted app — it never appears in search — but the
+field is required to submit.
+
+### Description (4,000 max — plain text, ASC renders no markdown)
+
+> Prayer Team is the private companion app for a church's prayer team.
+>
+> When someone in the congregation shares a prayer request — by text message
+> or through their church's request form — it arrives here, with the people
+> who have committed to pray for it.
+>
+> READ WHAT'S BEEN SHARED
+> A quiet feed of the requests your congregation has entrusted to the team.
+> Tap Pray to record that you've prayed, and see how many others have prayed
+> alongside you.
+>
+> REPLY WITH ENCOURAGEMENT
+> Where a church has text messaging set up, send a short note back to the
+> person who asked — a verse, a promise to keep praying, or simply "we prayed
+> for you today."
+>
+> KEEP THE FEED TENDED
+> Swipe to archive a request once it has been prayed through, or mark it as
+> spam. Move between the Active, Archived, and Spam tabs without losing your
+> place.
+>
+> KNOW WHEN SOMETHING ARRIVES
+> Push notifications when a new request comes in, with your own control over
+> what you are notified about.
+>
+> PRIVATE BY DESIGN
+> Every church's requests are separated at the database level, so a team
+> member sees only their own congregation. Requesters' phone numbers are
+> never sent to the app.
+>
+> Prayer Team requires an account created by your church administrator.
+> There is no public sign-up.
+
 ## 2. Screenshots
 
 Five 6.9" images live in `ios/screenshots/` (1320×2868, opaque — App
@@ -167,6 +225,24 @@ congregant data is ever in a store asset:
 xcrun simctl boot 'iPhone 17 Pro Max'
 cd ios/screenshots && xcrun simctl io booted screenshot --type=png 01-feed.png
 swift flatten.swift *.png   # strips the alpha simctl always writes
+```
+
+**Upload them to the 6.9" slot, not the 6.5" one.** App Store Connect
+validates each device-size slot against only that slot's dimensions, so a
+correct 1320×2868 image dropped into the 6.5" slot is rejected with
+"dimensions are wrong ... should be 1242 × 2688px ... or 1284 × 2778px" —
+a message that reads like the files are bad when the files are fine. It
+cost a review round-trip on 3 Sep. If the 6.5" slot already holds images,
+clear it; 6.9" alone satisfies the requirement.
+
+6.5"-sized copies (1284×2778) live in `ios/screenshots/6.5-inch/` if that
+slot ever has to be filled. The aspect ratios differ slightly, so they are
+scaled to width and centre-cropped by 12px of height:
+
+```bash
+cd ios/screenshots && mkdir -p 6.5-inch
+for f in 0*.png; do cp "$f" "6.5-inch/$f"
+  sips -z 2790 1284 "6.5-inch/$f"; sips -c 2778 1284 "6.5-inch/$f"; done
 ```
 
 ## 3. Age rating
