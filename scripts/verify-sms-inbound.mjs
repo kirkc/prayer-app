@@ -119,7 +119,7 @@ async function inbound(bodyText) {
   return res.status
 }
 
-const requests = () => svc(`/rest/v1/prayer_requests?select=id,request,reply_count,created_at&org_id=eq.${org.id}&order=created_at.asc`)
+const requests = () => svc(`/rest/v1/prayer_requests?select=id,request,reply_count,response_count,created_at&org_id=eq.${org.id}&order=created_at.asc`)
 const inboundRows = () => svc(`/rest/v1/inbound_messages?select=id,request_id,kind,body&org_id=eq.${org.id}&order=received_at.asc`)
 
 // Pretend we texted the requester about a request, from this member.
@@ -175,6 +175,11 @@ await seedOutbound(firstId)
     'a short text inside the window files as a reply',
     rows?.length === 2 && rows[1].kind === 'reply' && reqs?.length === 1 && reqs[0].reply_count === 1,
     `inbound ${rows?.length}, requests ${reqs?.length}, reply_count ${reqs?.[0]?.reply_count}`
+  )
+  check(
+    'a reaction does not count toward the conversation size',
+    reqs?.[0]?.reply_count === 1 && reqs?.[0]?.response_count === 0,
+    `reply_count ${reqs?.[0]?.reply_count}, response_count ${reqs?.[0]?.response_count}`
   )
 }
 

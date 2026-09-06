@@ -14,9 +14,12 @@ struct PrayerRequest: Codable, Identifiable, Hashable {
     let createdAt: Date
     let hasPhone: Bool
     var youPrayed: Bool
-    // Text replies the requester sent back. Optional so a build talking to a
-    // server without migration 017 still decodes.
+    // The two halves of the conversation. Optional so a build talking to a
+    // server without migrations 017/018 still decodes.
     var replyCount: Int?
+    var responseCount: Int?
+
+    var messageCount: Int { (replyCount ?? 0) + (responseCount ?? 0) }
 }
 
 // One line of a request's text conversation (GET /api/prayers/[id]/thread).
@@ -93,6 +96,7 @@ struct RespondResult: Codable {
     let replied: Bool
     let youPrayed: Bool
     let prayedCount: Int
+    let responseCount: Int?
 }
 
 struct SimpleSuccess: Codable {

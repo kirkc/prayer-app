@@ -23,9 +23,12 @@ export type PrayerRequest = {
   prayed_count: number
   created_at: string
   has_phone: boolean
-  // Text replies (not reactions) the requester has sent back — see
-  // inbound_messages (migration 017).
+  // The two halves of the conversation, denormalized so the feed can size it
+  // without reading the service-role-only tables: texts received from the
+  // requester (inbound_messages, 017) and texts the team has sent
+  // (prayer_responses, 018). Reactions count toward neither.
   reply_count: number
+  response_count: number
 }
 
 // A prayer request plus per-viewer state for the current signed-in user.
